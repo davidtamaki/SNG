@@ -16,10 +16,13 @@
 
 
 <!-- Template of the Tweets View -->
-<script type="text/template" id="tweetemplate">
+<script type="text/template" id="tweet_template">
+    <% _.each(tweets, function (tweet) { %>
     <div class="tweet">
-        <strong><%= screen_name %></strong> <%= message %>
+        <p>@<%= tweet.from_user %></p>
+        <p class="text"><%= tweet.text %></p><p><%= tweet.location %></p>
     </div>
+    <% }); %>
 </script>
 
 
