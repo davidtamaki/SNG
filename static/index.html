@@ -1,0 +1,39 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Twitter Tweets</title>
+</head>
+<body>
+
+  <h1>List of Tweets</h1>
+  <div id="tweetList">
+  </div>
+
+
+
+<!-- HANDLEBARS TEMPLATE -->
+
+
+<!-- Template of the Tweets View -->
+<script type="text/template" id="tweetemplate">
+    <div class="tweet">
+        <strong><%= screen_name %></strong> <%= message %>
+    </div>
+</script>
+
+
+  <!-- FOR BACKBONE, JQUERY, UNDERSCORE & HANDLEBARS -->
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script src="http://documentcloud.github.com/underscore/underscore-min.js"></script>
+  <script src="http://documentcloud.github.com/backbone/backbone-min.js"></script>
+  <script src="js/handlebars-v3.0.3.js"></script>
+  
+  <!-- IMPORT MODELS AND TEMPLATES -->
+  <script src="js/tweet.js"></script>
+  <script src="js/helpers.js"></script>
+
+</body>
+</html>
+
+
