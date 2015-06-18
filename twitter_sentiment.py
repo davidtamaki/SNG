@@ -37,30 +37,41 @@ class TweetStreamListener(StreamListener):
         else:
             sentiment = "positive"
 
-        # output sentiment + sentiment_polarity
-        print dict_data["user"]["screen_name"] + ' ' + str(sentiment) + ' ' + str(tweet.sentiment.polarity)
-        print dict_data["text"] + '\n'
+        # output key fields
+        print (dict_data["user"]["screen_name"] + ' ' + str(sentiment) + ' ' + str(tweet.sentiment.polarity))
+        print ('Friends Count: ' + str(dict_data["user"]["friends_count"]) + '    Followers Count: ' + str(dict_data["user"]["followers_count"]))
+        print (dict_data["text"] + '\n')
 
-        # add text and sentiment info to elasticsearch
-        es.index(index="sentiment",
-                 doc_type="tweetsdata",
-                 body={"twitter_id": dict_data["user"]["id"],
+
+        # add tweet data and sentiment info to elasticsearch
+        es.index(index="1", #event_id
+                 doc_type="item",
+                 body={"user_id": dict_data["user"]["id"],
                         "screen_name": dict_data["user"]["screen_name"],
                         "location": dict_data["user"]["location"],
                         "followers_count": dict_data["user"]["followers_count"],
                         "friends_count": dict_data["user"]["friends_count"],
-                        "favorite_count": dict_data["favorite_count"],
-                        "retweet_count": dict_data["retweet_count"],
+                        "favorite_count": dict_data["favorite_count"], #USELESS!!
+                        "retweet_count": dict_data["retweet_count"], #USELESS!!
                         "date": dict_data["created_at"],
                         "message": dict_data["text"],
                         "polarity": tweet.sentiment.polarity,
                         "subjectivity": tweet.sentiment.subjectivity,
-                        "sentiment": sentiment})
+                        "sentiment": sentiment,
+                        "source" : 'twitter'})
+                        # # source url, image, vide
+
+                        # if retweeted_status exists
+                        #     use retweeted_status for
+                        #         retweeted_status-id_str
+                        #         retweeted_status-user-screenname
+
+                        # item_url = 'https://twitter.com/' + dict_data["user"]["screen_name"] + '/status/' + id_str
         return True
 
     # on failure
     def on_error(self, status):
-        print status
+        print (status)
 
 if __name__ == '__main__':
 
@@ -75,5 +86,5 @@ if __name__ == '__main__':
     stream = Stream(auth, listener)
 
     # search twitter for keywords
-    stream.filter(track=['game of thrones','jon snow,daenerys,stannis,arya stark,sansa stark,tyrion,lannister,cersei'])
+    stream.filter(languages=['en'], track=['game of thrones','jon snow,daenerys,stannis,arya stark,sansa stark,tyrion,lannister,cersei'])
 

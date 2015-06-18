@@ -14,7 +14,7 @@
 var Tweet = Backbone.Model.extend();
 
 var Tweets = Backbone.Collection.extend({
-    url: 'http://localhost:9200/_search?q=message=snow',
+    url: '/api/events....',
     model: Tweet,
 
     parse: function(response) {
