@@ -12,10 +12,20 @@
 
 
 
+<ul class=entries>
+  {% for entry in final_data %}
+    <li><h2>{{ entry.item_url }}</h2>
+  {% else %}
+    <li><em>Unbelievable.  No entries here so far</em>
+  {% endfor %}
+</ul>
+
+
 <!-- HANDLEBARS TEMPLATE -->
 
 
 <!-- Template of the Tweets View -->
+<!--
 <script type="text/template" id="tweet_template">
     <% _.each(tweets, function (tweet) { %>
     <div class="tweet">
@@ -24,7 +34,7 @@
     </div>
     <% }); %>
 </script>
-
+-->
 
   <!-- FOR BACKBONE, JQUERY, UNDERSCORE & HANDLEBARS -->
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
