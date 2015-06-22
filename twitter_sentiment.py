@@ -77,7 +77,10 @@ class TweetStreamListener(StreamListener):
         if "media" not in dict_data["entities"]:
             item_type = "text"
         else:
-            item_type = dict_data["entities"]["media"][0]["type"]
+            if dict_data["entities"]["media"][0]["type"] == "photo":
+                item_type = "image"
+            else:
+                item_type = dict_data["entities"]["media"][0]["type"]
 
         if not retweeted_status:
             item_id = dict_data["id_str"]
@@ -87,7 +90,7 @@ class TweetStreamListener(StreamListener):
             followers_count = dict_data["user"]["followers_count"]
             friends_count = dict_data["user"]["friends_count"]
             statuses_count = dict_data["user"]["statuses_count"]
-            date = dict_data["created_at"]
+            date = time.strftime('%Y-%m-%dT%H:%M:%S', time.strptime(dict_data["created_at"],'%a %b %d %H:%M:%S +0000 %Y'))
             favorite_count = dict_data["favorite_count"] #should be 0
             share_count = dict_data["retweet_count"] #should be 0
             message = dict_data["text"]
@@ -99,7 +102,7 @@ class TweetStreamListener(StreamListener):
             followers_count = dict_data["retweeted_status"]["user"]["followers_count"]
             friends_count = dict_data["retweeted_status"]["user"]["friends_count"]
             statuses_count = dict_data["retweeted_status"]["user"]["statuses_count"]
-            date = dict_data["retweeted_status"]["created_at"]
+            date = time.strftime('%Y-%m-%dT%H:%M:%S', time.strptime(dict_data["retweeted_status"]["created_at"],'%a %b %d %H:%M:%S +0000 %Y'))
             favorite_count = dict_data["retweeted_status"]["favorite_count"]
             share_count = dict_data["retweeted_status"]["retweet_count"]
             message = dict_data["retweeted_status"]["text"]

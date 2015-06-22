@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css"
+          rel="stylesheet">
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h3 class="text-muted">How To Manage JSON Requests</h3>
+      </div>
+      <hr/>
+
+
+      <!-- For Twitter’s widgets JavaScript function -->
+      <script>window.twttr = (function(d, s, id) {
+        var js, fjs = d.getElementsByTagName(s)[0],
+          t = window.twttr || {};
+        if (d.getElementById(id)) return t;
+        js = d.createElement(s);
+        js.id = id;
+        js.src = "https://platform.twitter.com/widgets.js";
+        fjs.parentNode.insertBefore(js, fjs);
+       
+        t._e = [];
+        t.ready = function(f) {
+          t._e.push(f);
+        };
+       
+        return t;
+      }(document, "script", "twitter-wjs"));</script>
+      <!-- -->
+
+
+
+      <div>
+        
+      This is the JSON data, as an array of objects:<br />
+
+      <ul>
+      {% for item in jsondata %}
+        <li>{{item.item_url}}</li>
+      {% endfor %}
+      </ul>
+
+
+      This is the JSON data, as a string:<br />
+      <pre>{{jsondata}}</pre>
+
+      </div>
+ 
+
+      </div>
+    </div>
+
+
+
+
+
+
+
+    <!-- FOR BACKBONE, JQUERY, UNDERSCORE & HANDLEBARS -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+    <script src="http://documentcloud.github.com/underscore/underscore-min.js"></script>
+    <script src="http://documentcloud.github.com/backbone/backbone-min.js"></script>
+    <script src="handlebars-v3.0.3.js"></script>
+    
+    <!-- IMPORT MODELS AND TEMPLATES -->
+    <script src="tweet.js"></script>
+    <script src="helpers.js"></script>
+
+  </body>
+</html>
+
+
