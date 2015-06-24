@@ -26,7 +26,7 @@ def root():
 	# s = Search(using=client, index='1').sort('-date')
 
 	l = (Search(using=client, index='1').
-			query("match", source="twitter").
+			# query("match", source="twitter").
 			query("range", ** {"polarity": {"gte": 0.5}}).
 			sort('-favorite_count'))
 	l = l[0:10] # {"from": 0, "size": 10}
@@ -40,24 +40,26 @@ def root():
 		if h.source == "twitter":
 			h.item_url = "https://api.twitter.com/1/statuses/oembed.json?url=" + h.item_url
 		else:
-			h.item_url = "http://api.instagram.com/oembed?url=" + h.item_url
+			h.item_url = "http://api.instagram.com/oembed?url=" + h.item_url + "&maxwidth=320"
 		# print(h.date, h.source, h.item_type, h.screen_name, h.item_url)
 
 
 	r = (Search(using=client, index='1').
-			query("match", source="twitter").
+			# query("match", source="twitter").
 			query("range", ** {"polarity": {"lte": -0.5}}).
 			sort('-favorite_count'))
 	r = r[0:10]
 	response_right = r.execute()
 
+	print(r.to_dict())
+	print('Total %d hits found.' % response_right.hits.total)
 	for h in response_right:
 		h.polarity = round(h.polarity,2)
 		h.subjectivity = round(h.subjectivity,2)
 		if h.source == "twitter":
 			h.item_url = "https://api.twitter.com/1/statuses/oembed.json?url=" + h.item_url
 		else:
-			h.item_url = "http://api.instagram.com/oembed?url=" + h.item_url
+			h.item_url = "http://api.instagram.com/oembed?url=" + h.item_url + "&maxwidth=320"
 		# print(h.date, h.source, h.item_type, h.screen_name, h.item_url)
 
 
