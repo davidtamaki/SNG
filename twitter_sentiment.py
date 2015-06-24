@@ -91,6 +91,13 @@ class TweetStreamListener(StreamListener):
             else:
                 item_type = dict_data["entities"]["media"][0]["type"]
 
+        item_tag = ""
+        if dict_data["entities"]["hashtags"]:
+            for t in dict_data["entities"]["hashtags"]:
+                item_tag = t["text"] + " " + item_tag
+            item_tag.strip()
+
+
         if not retweeted_status:
             item_id = dict_data["id_str"]
             user_id = dict_data["user"]["id"]
@@ -124,6 +131,7 @@ class TweetStreamListener(StreamListener):
         print ('Friends Count: ' + str(friends_count) + '    Followers Count: ' + str(followers_count))
         print ('Retweet Count: ' + str(share_count) + '    Favorite Count: ' + str(favorite_count))
         print (str(message))
+        print ('Tags: ' + item_tag)
         print (item_url + '\n')
 
 
@@ -146,6 +154,7 @@ class TweetStreamListener(StreamListener):
                         "favorite_count": favorite_count,
                         "share_count": share_count,
                         "message": message,
+                        "item_tag": item_tag,
                         "source" : "twitter",
                         "item_url": item_url})
 
