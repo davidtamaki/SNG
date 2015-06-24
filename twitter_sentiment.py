@@ -13,20 +13,27 @@ from config import *
 # create instance of elasticsearch
 es = Elasticsearch()
 
-#change ID and search terms for each event
+#change ID, search terms, min reqs for each event
 EVENT_ID = 1
-SEARCH_TERM = ['game of thrones','jon snow,daenerys,stannis,arya stark,sansa stark,tyrion,lannister,cersei']
+SEARCH_TERM = ['confederate flag']  # ['game of thrones','jon snow,daenerys,stannis,arya stark,sansa stark,tyrion,lannister,cersei']
+MIN_FOLLOWERS = 1000 #2000
+MIN_FRIENDS = 300 #500
 
 class TweetStreamListener(StreamListener):
 
     # on success
     def on_data(self, data):
+        global first_it
 
         # decode json
         dict_data = json.loads(data)
 
         # skip tweets with users with <2000 followers and <500 friends
-        if dict_data["user"]["followers_count"]<2000 or dict_data["user"]["friends_count"]<500:
+        if "user" not in dict_data:
+            print ("invalid format: no user found, skip.")
+            return
+        if dict_data["user"]["followers_count"]<MIN_FOLLOWERS or dict_data["user"]["friends_count"]<MIN_FRIENDS:
+            print ("less than user metric threshold for storage, skip.")
             return
 
         # check if retweet
@@ -38,26 +45,28 @@ class TweetStreamListener(StreamListener):
         else:
             id_str = dict_data["retweeted_status"]["id_str"]
 
+        if first_it == False:
         ### Testing time to index es ###
-        t = time.process_time() # T start
-        s = Search(using=es, index=str(EVENT_ID)) \
-            .query("match", item_id=str(id_str))
-        response = s.execute()
+            t = time.process_time() # T start
+            s = Search(using=es, index=str(EVENT_ID)) \
+                .query("match", item_id=str(id_str))
+            response = s.execute()
 
-        elapsed_time = time.process_time() - t # T end
+            elapsed_time = time.process_time() - t # T end
 
-        s2 = Search(using=es, index=str(EVENT_ID))
-        all_records = s2.execute()
+            s2 = Search(using=es, index=str(EVENT_ID))
+            all_records = s2.execute()
 
-        # empty sequences (strings, lists, tuples) are false 
-        if response:
-            print ('Duplication caught. Not added to db. ID: ' + str(id_str) + '\n')
-            return
+            # empty sequences (strings, lists, tuples) are false 
+            if response:
+                print ('Duplication caught. Not added to db. ID: ' + str(id_str) + '\n')
+                return
 
-        print ('es index time (sec): ' + str(elapsed_time) + '   records in es: ' + str(all_records.hits.total) + '\n')
-        f = open("es_index_output.txt", "a")
-        f.write(str(elapsed_time) + '  ' + str(all_records.hits.total) + '\n')
-        f.close()
+            print ('es index time (sec): ' + str(elapsed_time) + '   records in es: ' + str(all_records.hits.total) + '\n')
+            f = open("es_index_output.txt", "a")
+            f.write(str(elapsed_time) + '  ' + str(all_records.hits.total) + '\n')
+            f.close()
+
 
         # pass tweet into TextBlob
         if not retweeted_status:
@@ -139,6 +148,8 @@ class TweetStreamListener(StreamListener):
                         "message": message,
                         "source" : "twitter",
                         "item_url": item_url})
+
+        first_it = False
         return True
 
     # on failure
@@ -147,6 +158,7 @@ class TweetStreamListener(StreamListener):
 
 if __name__ == '__main__':
 
+    first_it = True
     # create instance of the tweepy tweet stream listener
     listener = TweetStreamListener()
 

@@ -1,4 +1,6 @@
 from flask import Flask, request, redirect, url_for, send_from_directory, render_template
+from flask.ext.cache import Cache
+from flask.ext.twitter_oembedder import TwitterOEmbedder
 import json, requests
 from elasticsearch import Elasticsearch
 from elasticsearch_dsl import Search, Q
@@ -6,6 +8,10 @@ from elasticsearch_dsl import Search, Q
 client = Elasticsearch()
 
 app = Flask(__name__)
+# Check Configuring Flask-Cache section for more details
+cache = Cache(app,config={'CACHE_TYPE': 'simple'})
+
+twitter_oembedder = TwitterOEmbedder(app,cache)
 
 
 # send_static_file default to 'static' for js folder
@@ -17,30 +23,63 @@ def static_proxy(path):
 @app.route('/')
 def root():
 	# url = "http://localhost:9200/1/_search?"
+	# s = Search(using=client, index='1').sort('-date')
 
-	#s = Search(using=client, index='1').query("match", source="instagram").sort('-_timestamp')
-	#s = Search(using=client, index='1').sort('-_timestamp')
-	s = Search(using=client, index='1').sort('-date')
-	s = s[0:100] # {"from": 0, "size": 100}
-	response = s.execute()
+	l = (Search(using=client, index='1').
+			query("match", source="twitter").
+			query("range", ** {"polarity": {"gte": 0.5}}).
+			sort('-favorite_count'))
+	l = l[0:10] # {"from": 0, "size": 10}
+	response_left = l.execute()
 
-	# print query params and responses
-	print(s.to_dict())
-	print('Total %d hits found.' % response.hits.total)
-	for h in response:
-		print(h.date, h.source, h.item_type, h.screen_name, h.item_url)
+	print(l.to_dict())
+	print('Total %d hits found.' % response_left.hits.total)
+	for h in response_left:
+		h.polarity = round(h.polarity,2)
+		h.subjectivity = round(h.subjectivity,2)
+		if h.source == "twitter":
+			h.item_url = "https://api.twitter.com/1/statuses/oembed.json?url=" + h.item_url
+		else:
+			h.item_url = "http://api.instagram.com/oembed?url=" + h.item_url
+		# print(h.date, h.source, h.item_type, h.screen_name, h.item_url)
 
-	return render_template('index.html',jsondata=response)
+
+	r = (Search(using=client, index='1').
+			query("match", source="twitter").
+			query("range", ** {"polarity": {"lte": -0.5}}).
+			sort('-favorite_count'))
+	r = r[0:10]
+	response_right = r.execute()
+
+	for h in response_right:
+		h.polarity = round(h.polarity,2)
+		h.subjectivity = round(h.subjectivity,2)
+		if h.source == "twitter":
+			h.item_url = "https://api.twitter.com/1/statuses/oembed.json?url=" + h.item_url
+		else:
+			h.item_url = "http://api.instagram.com/oembed?url=" + h.item_url
+		# print(h.date, h.source, h.item_type, h.screen_name, h.item_url)
 
 
+	return render_template('index.html',jsondata_left=response_left,jsondata_right=response_right)
 
-@app.route('/api/events/<int:event_id>', methods=['GET'])
-def get_events(event_id):
-	url = "http://localhost:9200/" + str(event_id) + "/_search?"
+
+@app.route('/api/events', methods=['GET'])
+def get_events():
+	url = "http://localhost:9200/_all/_mapping"
 	response = requests.get(url)
 	data = response.json()
 	# data = data["hits"]["hits"] NEED TO UPDATE
-	return render_template('request.html',jsondata=data)
+	return data
+
+
+# @app.route('/api/events/<int:event_id>', methods=['GET'])
+# def get_events(event_id):
+# 	url = "http://localhost:9200/" + str(event_id) + "/_search?"
+# 	response = requests.get(url)
+# 	data = response.json()
+# 	# data = data["hits"]["hits"] NEED TO UPDATE
+# 	return render_template('request.html',jsondata=data)
 
 
 @app.route('/api/events/<int:event_id>/user/<int:user_id>', methods=['GET'])

@@ -1,6 +1,7 @@
 elasticsearch==1.6.0
 elasticsearch-dsl==0.0.4
 Flask==0.10.1
+Flask-Cache==0.13.1
 httplib2==0.9.1
 itsdangerous==0.24
 Jinja2==2.7.3
