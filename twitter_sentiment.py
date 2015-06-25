@@ -25,6 +25,10 @@ class TweetStreamListener(StreamListener):
     def on_data(self, data):
         global first_it
 
+        # sometimes tweepy send NoneType objects
+        if data is None:
+            return
+
         # decode json
         dict_data = json.loads(data)
 
@@ -63,7 +67,7 @@ class TweetStreamListener(StreamListener):
                 return
 
             print ('es index time (sec): ' + str(elapsed_time) + '   records in es: ' + str(all_records.hits.total) + '\n')
-            f = open("es_index_output.txt", "a")
+            f = open("tests/es_index_output.txt", "a")
             f.write(str(elapsed_time) + '  ' + str(all_records.hits.total) + '\n')
             f.close()
 

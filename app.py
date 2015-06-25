@@ -27,7 +27,7 @@ def root():
 
 	l = (Search(using=client, index='1').
 			# query("match", source="twitter").
-			query("range", ** {"polarity": {"gte": 0.5}}).
+			query("range", ** {"polarity": {"gte": 0.2}}).
 			sort('-favorite_count'))
 	l = l[0:10] # {"from": 0, "size": 10}
 	response_left = l.execute()
@@ -46,7 +46,7 @@ def root():
 
 	r = (Search(using=client, index='1').
 			# query("match", source="twitter").
-			query("range", ** {"polarity": {"lte": -0.5}}).
+			query("range", ** {"polarity": {"lte": -0.2}}).
 			sort('-favorite_count'))
 	r = r[0:10]
 	response_right = r.execute()
