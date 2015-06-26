@@ -29,7 +29,7 @@ def root():
 			# query("match", source="twitter").
 			query("range", ** {"polarity": {"gte": 0.2}}).
 			sort('-favorite_count'))
-	l = l[0:10] # {"from": 0, "size": 10}
+	l = l[11:15] # {"from": 0, "size": 10}
 	response_left = l.execute()
 
 	print(l.to_dict())
@@ -48,7 +48,7 @@ def root():
 			# query("match", source="twitter").
 			query("range", ** {"polarity": {"lte": -0.2}}).
 			sort('-favorite_count'))
-	r = r[0:10]
+	r = r[11:15]
 	response_right = r.execute()
 
 	print(r.to_dict())
