@@ -39,6 +39,7 @@ def root():
 		h.subjectivity = round(h.subjectivity,2)
 		if h.source == "twitter":
 			h.item_url = "https://api.twitter.com/1/statuses/oembed.json?url=" + h.item_url
+		# for instragram --> h.item_url = "http://api.instagram.com/oembed?url=" + h.item_url + "&maxwidth=320"
 		# print(h.date, h.source, h.item_type, h.screen_name, h.item_url)
 
 	r = (Search(using=client, index='1').
@@ -55,17 +56,17 @@ def root():
 		h.subjectivity = round(h.subjectivity,2)
 		if h.source == "twitter":
 			h.item_url = "https://api.twitter.com/1/statuses/oembed.json?url=" + h.item_url
-		# for instragram --> h.item_url = "http://api.instagram.com/oembed?url=" + h.item_url + "&maxwidth=320"
 		# print(h.date, h.source, h.item_type, h.screen_name, h.item_url)
 
 	return render_template('index.html',jsondata_left=response_left,jsondata_right=response_right)
 
 
+# e.g. http://localhost:5000/source/instagram/item/1
 @app.route('/source/<s>/item/<int:page>', methods=['GET'])
 def get_items(s,page):
 	l = (Search(using=client, index='1').
 		query("match", source=s).
-		query("range", ** {"polarity": {"gte": 0.2}}).
+		query("range", ** {"polarity": {"gte": 0.1}}).
 		sort('-favorite_count'))
 	l = l[10*(page-1):10*page]
 	response_left = l.execute()
@@ -75,45 +76,41 @@ def get_items(s,page):
 	for h in response_left:
 		h.polarity = round(h.polarity,2)
 		h.subjectivity = round(h.subjectivity,2)
-		h.item_url = "https://api.twitter.com/1/statuses/oembed.json?url=" + h.item_url
-	return render_template('twitter.html',jsondata_left=response_left,total=response_left.hits.total)
+		if h.source == "twitter":
+			h.item_url = "https://api.twitter.com/1/statuses/oembed.json?url=" + h.item_url
+	return render_template('source.html',jsondata_left=response_left,total=response_left.hits.total)
 
 
 
-@app.route('/api/events', methods=['GET'])
-def get_events():
-	url = "http://localhost:9200/_all/_mapping"
-	response = requests.get(url)
-	data = response.json()
-	# data = data["hits"]["hits"] NEED TO UPDATE
-	return data
+# BELOW NOT IN USE
 
-
-# @app.route('/api/events/<int:event_id>', methods=['GET'])
-# def get_events(event_id):
-# 	url = "http://localhost:9200/" + str(event_id) + "/_search?"
+# @app.route('/api/events', methods=['GET'])
+# def get_events():
+# 	url = "http://localhost:9200/_all/_mapping"
 # 	response = requests.get(url)
 # 	data = response.json()
 # 	# data = data["hits"]["hits"] NEED TO UPDATE
+# 	return data
+
+
+
+# @app.route('/api/events/<int:event_id>/user/<int:user_id>', methods=['GET'])
+# def get_user_items(event_id,user_id):
+# 	url = "http://localhost:9200/" + str(event_id) + "/_search?q=user_id:" + str(user_id)
+# 	response = requests.get(url)
+# 	data = response.json()
+# 	data = data["hits"]["hits"]
 # 	return render_template('request.html',jsondata=data)
 
 
-@app.route('/api/events/<int:event_id>/user/<int:user_id>', methods=['GET'])
-def get_user_items(event_id,user_id):
-	url = "http://localhost:9200/" + str(event_id) + "/_search?q=user_id:" + str(user_id)
-	response = requests.get(url)
-	data = response.json()
-	data = data["hits"]["hits"]
-	return render_template('request.html',jsondata=data)
 
-
-@app.route('/api/events/<int:event_id>/item/<item_id>', methods=['GET'])
-def get_event_itemid(event_id,item_id):
-	url = "http://localhost:9200/" + str(event_id) + "/_search?q=item_id:" + str(item_id)
-	response = requests.get(url)
-	data = response.json()
-	data = data["hits"]["hits"]
-	return render_template('request.html',jsondata=data)	
+# @app.route('/api/events/<int:event_id>/item/<item_id>', methods=['GET'])
+# def get_event_itemid(event_id,item_id):
+# 	url = "http://localhost:9200/" + str(event_id) + "/_search?q=item_id:" + str(item_id)
+# 	response = requests.get(url)
+# 	data = response.json()
+# 	data = data["hits"]["hits"]
+# 	return render_template('request.html',jsondata=data)	
 
 
 if __name__ == '__main__':

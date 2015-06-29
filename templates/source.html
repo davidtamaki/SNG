@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css"/>
+
+    <script>
+      function init() {
+        $("a.embed").oembed();
+      }
+      window.onload = init;
+    </script>          
+
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h3 class="text-muted">Social News Generator: Trending Thoughts</h3>
+      </div>
+      <hr/>
+
+
+      <div class="pagination-holder clearfix">
+       <div id="light-pagination" class="pagination"></div>
+     </div>
+
+      Top 10 Positive Items:<br />
+      <ul>
+      {% for item in jsondata_left %}
+        <li>Sentiment: {{item.sentiment}} 
+            Polarity: {{item.polarity}}  
+            Subjectivity: {{item.subjectivity}}  
+            Favourites: {{item.favorite_count}}  
+            Friends: {{item.friends_count}}  
+            Followers:  {{item.followers_count}}
+            {% if item.source == "twitter" %}
+              {{oembed_tweet(item.item_id)}}
+            {% else %}
+              <a href="{{item.item_url}}" class="embed"></a>
+            {% endif %}
+        </li>
+      {% endfor %}
+      </ul>
+
+    </div> <!-- end container -->
+
+
+
+    <!-- FOR EMBED-JS, CSS, & JQUERY, OEMBED  -->
+    <link rel="stylesheet" href="{{url_for('static', filename='jquery.embed.css') }}"/>
+    <link rel="stylesheet" href="{{url_for('static', filename='jquery.oembed.css') }}"/>
+    <link rel="stylesheet" href="{{url_for('static', filename='simplePagination.css') }}"/>
+
+    <script type=text/javascript src="{{url_for('static', filename='jquery.min.js') }}"></script>
+    <script type=text/javascript src="{{url_for('static', filename='jquery.simplePagination.js') }}"></script>
+    <script type=text/javascript src="{{url_for('static', filename='jquery.jscroll.js') }}"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/highlight.min.js"></script>
+    <script src="http://platform.twitter.com/widgets.js"></script>
+
+    <script type=text/javascript src="{{url_for('static', filename='jquery.embed.js') }}"></script>
+    <script type=text/javascript src="{{url_for('static', filename='jquery.oembed_01.js') }}"></script>
+
+    <!-- FOR JQUERY, UNDERSCORE, BACKBONE -->
+    <script src="http://documentcloud.github.com/underscore/underscore-min.js"></script>
+    <script src="http://documentcloud.github.com/backbone/backbone-min.js"></script>
+
+    <script>
+    $(function() {
+        $("#light-pagination").pagination({
+            items: {{total}},
+            itemsOnPage: 10,
+            cssStyle: 'light-theme',
+            hrefTextPrefix:''
+        });
+    });
+
+    $(document).ready(function(){
+      $('.scroll').jscroll({
+      loadingHtml: '<img src="loading.gif" alt="Loading" /> Loading...',
+      padding: 20,
+      nextSelector: 'a.jscroll-next:last',
+      contentSelector: '.infinite-scroll'
+      });
+    });
+    </script>
+
+  </body>
+</html>
+
+

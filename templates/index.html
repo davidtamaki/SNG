@@ -1,8 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <link href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css"
-          rel="stylesheet">
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css"/>
 
     <script>
       function init() {
@@ -79,23 +78,23 @@
 
 
     <!-- FOR EMBED-JS, CSS, & JQUERY, OEMBED  -->
-    <link rel="stylesheet" href="jquery.embed.css"/>
-    <script src="jquery.min.js"></script>
+    <link rel="stylesheet" href="{{url_for('static', filename='jquery.embed.css') }}"/>
+    <link rel="stylesheet" href="{{url_for('static', filename='jquery.oembed.css') }}"/>
+    <link rel="stylesheet" href="{{url_for('static', filename='simplePagination.css') }}"/>
+
+    <script type=text/javascript src="{{url_for('static', filename='jquery.min.js') }}"></script>
+    <script type=text/javascript src="{{url_for('static', filename='jquery.simplePagination.js') }}"></script>
+    <script type=text/javascript src="{{url_for('static', filename='jquery.jscroll.js') }}"></script>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/highlight.min.js"></script>
     <script src="http://platform.twitter.com/widgets.js"></script>
-    <script src="jquery.embed.js"></script>
-    <script src="jquery.oembed.css"></script>
-    <script src="jquery.oembed_01.js"></script>        
 
-    <!-- FOR JQUERY, UNDERSCORE, BACKBONE, & HANDLEBARS -->
-    <!-- <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script> -->
+    <script type=text/javascript src="{{url_for('static', filename='jquery.embed.js') }}"></script>
+    <script type=text/javascript src="{{url_for('static', filename='jquery.oembed_01.js') }}"></script>
+
+    <!-- FOR JQUERY, UNDERSCORE, BACKBONE -->
     <script src="http://documentcloud.github.com/underscore/underscore-min.js"></script>
     <script src="http://documentcloud.github.com/backbone/backbone-min.js"></script>
-    <!-- <script src="handlebars-v3.0.3.js"></script> -->
-    
-    <!-- IMPORT MODELS AND TEMPLATES -->
-    <!-- <script src="tweet.js"></script>
-    <script src="helpers.js"></script> -->
 
   </body>
 </html>
