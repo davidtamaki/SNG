@@ -20,9 +20,14 @@
       <hr/>
 
 
+      <div class="pagination-holder clearfix">
+       <div id="light-pagination" class="pagination"></div>
+     </div>
+
       <div style="width: 100%;">
 
-         <div style="float:left; width: 50%">
+         <div style="float:left; width: 100%"> <!-- div left -->
+
           Top 10 Positive Items:<br />
           <ul>
           {% for item in jsondata_left %}
@@ -42,35 +47,12 @@
           </ul>
          </div> <!-- end div left -->
 
-         <div style="float:right; width: 50%">
-          Top 10 Negative Items:<br />
-          <ul>
-          {% for item in jsondata_right %}
-            <li>Sentiment: {{item.sentiment}}  
-                Polarity: {{item.polarity}}  
-                Subjectivity: {{item.subjectivity}}  
-                Favourites: {{item.favorite_count}}  
-                Friends: {{item.friends_count}}  
-                Followers:  {{item.followers_count}}
-                {% if item.source == "twitter" %}
-                  {{oembed_tweet(item.item_id)}}
-                {% else %}
-                  <a href="{{item.item_url}}" class="embed"></a>
-                {% endif %}
-              </li>
-          {% endfor %}
-          </ul>          
-         </div> <!-- end div right -->
 
       </div>
       <div style="clear:both"></div>
 
 
 
-      <div>
-      This is the JSON data, as a string:<br />
-      <pre>{{jsondata_left}} {{jsondata_right}}</pre>
-      </div>
  
 
     </div> <!-- end container -->
@@ -80,7 +62,10 @@
 
     <!-- FOR EMBED-JS, CSS, & JQUERY, OEMBED  -->
     <link rel="stylesheet" href="jquery.embed.css"/>
-    <script src="jquery.min.js"></script>
+    <link rel="stylesheet" href="http://localhost:5000/static/simplePagination.css"/>
+    <script src="http://localhost:5000/static/jquery.min.js"></script>
+    <script src="http://localhost:5000/static/jquery.simplePagination.js"></script>
+    <script src="http://localhost:5000/static/jquery.jscroll.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/highlight.min.js"></script>
     <script src="http://platform.twitter.com/widgets.js"></script>
     <script src="jquery.embed.js"></script>
@@ -96,6 +81,26 @@
     <!-- IMPORT MODELS AND TEMPLATES -->
     <!-- <script src="tweet.js"></script>
     <script src="helpers.js"></script> -->
+
+    <script>
+    $(function() {
+        $("#light-pagination").pagination({
+            items: {{total}},
+            itemsOnPage: 10,
+            cssStyle: 'light-theme',
+            hrefTextPrefix:''
+        });
+    });
+
+    $(document).ready(function(){
+      $('.scroll').jscroll({
+      loadingHtml: '<img src="loading.gif" alt="Loading" /> Loading...',
+      padding: 20,
+      nextSelector: 'a.jscroll-next:last',
+      contentSelector: '.infinite-scroll'
+      });
+    });
+    </script>
 
   </body>
 </html>

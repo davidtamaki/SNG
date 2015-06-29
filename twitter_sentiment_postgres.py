@@ -6,7 +6,7 @@ from tweepy import Stream
 from textblob import TextBlob
 from sngsql.database import Base, db_session, engine
 from sngsql.model import Hashtag, Item, User, Word
-from sqlalchemy.sql import exists
+from sqlalchemy.sql import exists, update
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 # from elasticsearch import Elasticsearch
@@ -39,7 +39,7 @@ class TweetStreamListener(StreamListener):
         dict_data = json.loads(data)
         
         if "user" not in dict_data:
-            print ("invalid format: no user found, skip.")
+            print ("invalid format: no user found, skip." + "\n")
             return
 
         # check if retweet
@@ -48,13 +48,13 @@ class TweetStreamListener(StreamListener):
         # check if duplication and skip tweets with users with less than req threshold
         if not retweeted_status:
             if dict_data["user"]["followers_count"]<MIN_FOLLOWERS or dict_data["user"]["friends_count"]<MIN_FRIENDS:
-                print ("less than user metric threshold for storage, skip.")
+                print ("less than user metric threshold for storage, skip." + "\n")
                 return
             id_str = dict_data["id_str"]
 
         else:
             if dict_data["retweeted_status"]["user"]["followers_count"]<MIN_FOLLOWERS or dict_data["retweeted_status"]["user"]["friends_count"]<MIN_FRIENDS:
-                print ("less than user metric threshold for storage, skip.")
+                print ("less than user metric threshold for storage, skip." + "\n")
                 return            
             id_str = dict_data["retweeted_status"]["id_str"]
 
@@ -65,8 +65,13 @@ class TweetStreamListener(StreamListener):
 
         (ret, ), = db_session.query(exists().where(Item.item_id==str(id_str)))
         if ret: 
-            # CHANGE TO UPDATE RECORD (share_count and favorite_count )
-            print ('Duplication caught. Not added to db. ID: ' + str(id_str) + '\n')
+            # Item already exists. Update share_count & favorite_count
+            if retweeted_status:
+                record = db_session.query(Item).filter(Item.item_id==id_str).one()
+                record.favorite_count=dict_data["retweeted_status"]["favorite_count"]
+                record.share_count=dict_data["retweeted_status"]["retweet_count"]
+                db_session.flush()
+            print ('Duplication caught. Updated favorite & share count. ID: ' + str(id_str) + '\n')
             return
 
         elapsed_time = time.process_time() - t # T end
@@ -102,7 +107,6 @@ class TweetStreamListener(StreamListener):
 
 
         if not retweeted_status:
-            item_id = dict_data["id_str"]
             user_id = dict_data["user"]["id"]
             screen_name = dict_data["user"]["screen_name"]
             location = dict_data["user"]["location"]
@@ -114,7 +118,6 @@ class TweetStreamListener(StreamListener):
             share_count = dict_data["retweet_count"] #should be 0
             message = dict_data["text"]
         else:
-            item_id = dict_data["retweeted_status"]["id_str"]
             user_id = dict_data["retweeted_status"]["user"]["id"]
             screen_name = dict_data["retweeted_status"]["user"]["screen_name"]
             location = dict_data["retweeted_status"]["user"]["location"]
@@ -125,7 +128,7 @@ class TweetStreamListener(StreamListener):
             favorite_count = dict_data["retweeted_status"]["favorite_count"]
             share_count = dict_data["retweeted_status"]["retweet_count"]
             message = dict_data["retweeted_status"]["text"]
-
+        item_id = id_str
         item_url = 'https://twitter.com/' + str(screen_name) + '/status/' + str(item_id)
 
         try:

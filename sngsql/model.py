@@ -24,6 +24,7 @@ item_hashtag = Table('item_hashtag', Base.metadata,
 class Item(Base):
     __tablename__ = 'item'
     id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
     message = Column(String(300), nullable=False)
     item_id = Column(String(100), nullable=False, unique=True)
     item_type = Column(String(100), nullable=False)
@@ -41,7 +42,7 @@ class Item(Base):
     comment_count = Column(BigInteger) # only intstagram
     favorite_count = Column(BigInteger, nullable=False)
     share_count = Column(BigInteger) # only twitter
-    user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
+
 
     # full json dump (for ref)
     data = Column(Text, nullable=False)
