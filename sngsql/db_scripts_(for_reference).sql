@@ -1,3 +1,10 @@
+# popular words
+SELECT word, count(word) 
+FROM word
+GROUP BY word
+HAVING count(word)>1
+ORDER BY count(word) DESC
+
 
 # show all users with more than 1 post
 SELECT user_id, screen_name,

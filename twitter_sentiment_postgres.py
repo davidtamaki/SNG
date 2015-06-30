@@ -162,16 +162,30 @@ class TweetStreamListener(StreamListener):
             # words
             words = tw.message.split()
             for w in words:
-                try:
-                    w_obj = db_session.query(Word).filter(Word.word == w).one()
-                except MultipleResultsFound:
-                    pass
-                except NoResultFound:
-                    w_obj = Word(word=w)
-                    db_session.add(w_obj)
-                    db_session.commit()
-                    tw.words.append(w_obj)
-                    u.words.append(w_obj)
+
+
+                # pre-sentiment score:
+                # all caps / exclamation = more intense
+                # smily faces
+                # stretch out common slang (e.g. LOL = laughing out loud)
+                # shorten words (e.g. cooooooool = coool)                
+
+                # Pre-storage:
+                # get rid of stop words
+                # clean punctuation
+                # capitalisation
+                # remove symbols
+                # remove hashtags
+                # remove urls
+                # pluralisation?
+
+
+
+                w_obj = Word(word=w)
+                db_session.add(w_obj)
+                db_session.commit()
+                tw.words.append(w_obj)
+                u.words.append(w_obj)
 
             # hashtags
             if dict_data["entities"]["hashtags"]:
