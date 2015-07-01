@@ -14,6 +14,7 @@ auth.set_access_token(twitter_access_token, access_token_secret)
 api = tweepy.API(auth)
 
 ids = []
+#can use userid or sn (e.g. user_id=12345)
 for page in tweepy.Cursor(api.followers_ids, screen_name="gymboxofficial").pages():
     ids.extend(page)
     print (str(ids))
@@ -21,5 +22,11 @@ for page in tweepy.Cursor(api.followers_ids, screen_name="gymboxofficial").pages
 
 print (len(ids))
 
+# naive ranking...
+# favorite count
+# retweat count
 
-
+# friends count
+# followers count
+# status count
+# tweet_score = (comment_percentile_weight * comment_percentile) + (views_percentile_weight * views_percentile)

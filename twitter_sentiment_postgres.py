@@ -6,6 +6,7 @@ from tweepy import Stream
 from textblob import TextBlob
 from sngsql.database import Base, db_session, engine
 from sngsql.model import Hashtag, Item, User, Word
+from nlp_textblob import *
 from sqlalchemy.sql import exists, update
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
@@ -150,7 +151,7 @@ class TweetStreamListener(StreamListener):
                 location=location,
                 date=date,
                 source="twitter",
-                polarity=tweet.sentiment.polarity,
+                polarity=emphasis(tweet),
                 subjectivity=tweet.sentiment.subjectivity,
                 sentiment=sentiment,
                 favorite_count=favorite_count,
@@ -160,7 +161,7 @@ class TweetStreamListener(StreamListener):
 
         try:
             # words
-            words = tw.message.split()
+            words = clean_words(tweet)
             for w in words:
 
 

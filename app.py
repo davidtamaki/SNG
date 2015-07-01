@@ -26,9 +26,10 @@ def root():
 	# s = Search(using=client, index='1').sort('-date')
 
 	l = (Search(using=client, index='1').
-			query("match", source="twitter").
-			query("range", ** {"polarity": {"gte": 0.2}}).
-			sort('-favorite_count'))
+			#query("match", source="twitter").
+			query("range", ** {"polarity": {"gte": 0.1}}).
+			#sort('-favorite_count'))
+			sort('-share_count'))
 	l = l[0:10] # {"from": 0, "size": 10}
 	response_left = l.execute()
 
@@ -43,9 +44,10 @@ def root():
 		# print(h.date, h.source, h.item_type, h.screen_name, h.item_url)
 
 	r = (Search(using=client, index='1').
-			query("match", source="twitter").
-			query("range", ** {"polarity": {"lte": -0.2}}).
-			sort('-favorite_count'))
+			#query("match", source="twitter").
+			query("range", ** {"polarity": {"lte": -0.1}}).
+			#sort('-favorite_count'))
+			sort('-share_count'))
 	r = r[0:10]
 	response_right = r.execute()
 
