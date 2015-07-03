@@ -1,4 +1,5 @@
 *.pyc
+*.xls
 .DS_Store
 config.py
 get_access_token.py

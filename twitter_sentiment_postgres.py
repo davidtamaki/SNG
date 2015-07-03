@@ -20,8 +20,8 @@ EVENT_ID = 1
 SEARCH_TERM = (['Bobby Jindal','Donald Trump','Jeb Bush','Rick Perry',
     'Lindsey Graham','George Pataki','Rick Santorum','Mike Huckabee','Marco Rubio',
     'Rand Paul','Ted Cruz','Chris Christie','Scott Walker','Hillary Clinton'])
-MIN_FOLLOWERS = 1000 #2000
-MIN_FRIENDS = 500 #500
+MIN_FOLLOWERS = 0 #2000
+MIN_FRIENDS = 0 #500
 
 class TweetStreamListener(StreamListener):
 
@@ -44,15 +44,15 @@ class TweetStreamListener(StreamListener):
 
         # check if duplication and skip tweets with users with less than req threshold
         if not retweeted_status:
-            if dict_data["user"]["followers_count"]<MIN_FOLLOWERS or dict_data["user"]["friends_count"]<MIN_FRIENDS:
-                print ("less than user metric threshold for storage, skip." + "\n")
-                return
+            # if dict_data["user"]["followers_count"]<MIN_FOLLOWERS or dict_data["user"]["friends_count"]<MIN_FRIENDS:
+            #     print ("less than user metric threshold for storage, skip." + "\n")
+            #     return
             id_str = dict_data["id_str"]
 
         else:
-            if dict_data["retweeted_status"]["user"]["followers_count"]<MIN_FOLLOWERS or dict_data["retweeted_status"]["user"]["friends_count"]<MIN_FRIENDS:
-                print ("less than user metric threshold for storage, skip." + "\n")
-                return            
+            # if dict_data["retweeted_status"]["user"]["followers_count"]<MIN_FOLLOWERS or dict_data["retweeted_status"]["user"]["friends_count"]<MIN_FRIENDS:
+            #     print ("less than user metric threshold for storage, skip." + "\n")
+            #     return            
             id_str = dict_data["retweeted_status"]["id_str"]
 
 

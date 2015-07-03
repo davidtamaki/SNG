@@ -9,18 +9,18 @@ ORDER BY count(word) DESC
 select contestant, round(cast(avg(polarity) as numeric),2), count(polarity) as total,
 	count(case when sentiment ='negative' then sentiment else null end) as negative,
 	count(case when sentiment ='neutral' then sentiment else null end) as neutral,
-	count(case when sentiment ='positive' then sentiment else null end) as positive
+	count(case when sentiment ='positive' then sentiment else null end) as positive,
+	sum(share_count) as total_retweet_count
 from item
 group by contestant
-order by avg(polarity) desc
+order by sum(share_count) desc
 
 
 # important users with counts and no of posts
 select uid, screen_name, followers_count, friends_count, count(message)
 from "user"
 join item on item.user_id="user".id
-where followers_count > '10000'
-or friends_count > '10000'
+where followers_count > '20000'
 group by uid, screen_name, followers_count, friends_count
 order by count(message) desc
 
