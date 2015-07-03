@@ -73,3 +73,15 @@ join word on user_word.word_id=word.id
 join item on item.user_id="user".id
 group by screen_name,word
 having count(item_id)>5
+
+#find smily faces :)
+select *
+from item
+where message similar to '%:\)%'
+
+# unicode faces range
+select *
+from item
+where message similar to '%[\U0001F600-\U0001F6FF]%'
+
+

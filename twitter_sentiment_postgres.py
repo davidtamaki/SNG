@@ -4,6 +4,7 @@ from tweepy.streaming import StreamListener
 from tweepy import OAuthHandler
 from tweepy import Stream
 from textblob import TextBlob
+# from textblob.sentiments import NaiveBayesAnalyzer
 from sngsql.database import Base, db_session, engine
 from sngsql.model import Hashtag, Item, User, Word, Url
 from nlp_textblob import *
@@ -58,7 +59,7 @@ class TweetStreamListener(StreamListener):
 
 
         ### Testing time to index postgres ###
-        t = time.process_time() # T start
+        # t = time.process_time() # T start
 
         (ret, ), = db_session.query(exists().where(Item.item_id==str(id_str)))
         if ret: 
@@ -71,11 +72,11 @@ class TweetStreamListener(StreamListener):
             print ('Duplication caught. Updated favorite & share count. ID: ' + str(id_str) + '\n')
             return
 
-        elapsed_time = time.process_time() - t # T end
-        print ('pg index time (sec): ' + str(elapsed_time) + '   records in pg: ' + str(db_session.query(Item).count()) + '\n')
-        f = open("tests/pg_index_output.txt", "a")
-        f.write(str(elapsed_time) + '  ' + str(db_session.query(Item).count()) + '\n')
-        f.close()
+        # elapsed_time = time.process_time() - t # T end
+        # print ('pg index time (sec): ' + str(elapsed_time) + '   records in pg: ' + str(db_session.query(Item).count()) + '\n')
+        # f = open("tests/pg_index_output.txt", "a")
+        # f.write(str(elapsed_time) + '  ' + str(db_session.query(Item).count()) + '\n')
+        # f.close()
 
         # pass tweet into TextBlob
         if not retweeted_status:
