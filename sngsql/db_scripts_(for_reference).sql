@@ -5,6 +5,25 @@ GROUP BY word
 HAVING count(word)>1
 ORDER BY count(word) DESC
 
+# average sentiment scores of contestants
+select contestant, round(cast(avg(polarity) as numeric),2), count(polarity) as total,
+	count(case when sentiment ='negative' then sentiment else null end) as negative,
+	count(case when sentiment ='neutral' then sentiment else null end) as neutral,
+	count(case when sentiment ='positive' then sentiment else null end) as positive
+from item
+group by contestant
+order by avg(polarity) desc
+
+
+# important users with counts and no of posts
+select uid, screen_name, followers_count, friends_count, count(message)
+from "user"
+join item on item.user_id="user".id
+where followers_count > '10000'
+or friends_count > '10000'
+group by uid, screen_name, followers_count, friends_count
+order by count(message) desc
+
 
 # show all users with more than 1 post
 SELECT user_id, screen_name,
@@ -39,7 +58,7 @@ from item_word
 join item on item_word.item_id=item.id
 join word on item_word.word_id=word.id
 
-
+# connect user and hashtag
 select screen_name,hashtag
 from user_hashtag
 join "user" on user_hashtag.user_id="user".id

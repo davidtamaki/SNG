@@ -13,7 +13,7 @@ es = Elasticsearch()
 
 #change ID and search terms for each event
 EVENT_ID = 1
-SEARCH_TERM = 'confederateflag'
+SEARCH_TERM = '2016president'
 MIN_FOLLOWERS = 100
 MIN_LIKES = 0
 SLEEP = 20

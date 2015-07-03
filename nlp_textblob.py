@@ -41,7 +41,7 @@ def clean_words(TB):
     urls = re.findall('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', str(TB))
     shoutouts_and_hashtags = [w[1:] for w in str(TB).split() if (w[0]=='@' or w[0]=='#')]
     #shoutouts_and_hashtags = [str(TextBlob(s).words.singularize()) for s in shoutouts_and_hashtags]
-    print ('shoutouts and hashtags: ' + str(shoutouts_and_hashtags))
+    # print ('shoutouts and hashtags: ' + str(shoutouts_and_hashtags))
     #words = TB.words.singularize()
     words = TB.words
     
@@ -52,10 +52,10 @@ def clean_words(TB):
     remove = [u for url in remove for u in url]
     stopwords = [w for w in words if w in stop]
     remove = remove + stopwords + shoutouts_and_hashtags
-    print (remove)
+    # print (remove)
 
     words = [w.lower() for w in words if len(w)>2 and w not in (remove)] 
-    print (words)
+    # print (words)
     return words
 
 

@@ -68,7 +68,7 @@ def root():
 def get_items(s,page):
 	l = (Search(using=client, index='1').
 		query("match", source=s).
-		query("range", ** {"polarity": {"gte": 0.1}}).
+		#query("range", ** {"polarity": {"gte": 0.1}}).
 		sort('-favorite_count'))
 	l = l[10*(page-1):10*page]
 	response_left = l.execute()

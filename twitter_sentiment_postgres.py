@@ -5,19 +5,15 @@ from tweepy import OAuthHandler
 from tweepy import Stream
 from textblob import TextBlob
 from sngsql.database import Base, db_session, engine
-from sngsql.model import Hashtag, Item, User, Word
+from sngsql.model import Hashtag, Item, User, Word, Url
 from nlp_textblob import *
 from sqlalchemy.sql import exists, update
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
-# from elasticsearch import Elasticsearch
-# from elasticsearch_dsl import Search
 
 # import twitter keys and tokens
 from config import *
 
-# create instance of elasticsearch
-# es = Elasticsearch()
 
 #change ID, search terms, min reqs for each event
 EVENT_ID = 1
@@ -81,13 +77,19 @@ class TweetStreamListener(StreamListener):
         f.write(str(elapsed_time) + '  ' + str(db_session.query(Item).count()) + '\n')
         f.close()
 
-
-
         # pass tweet into TextBlob
         if not retweeted_status:
             tweet = TextBlob(dict_data["text"])
         else:
             tweet = TextBlob(dict_data["retweeted_status"]["text"])
+
+        # find contestant
+        contestant = 'Unknown'
+        for x in SEARCH_TERM:       
+            if all (n.lower() in tweet.lower() for n in x.split()):
+                print (x)
+                contestant = str(x)
+                break
 
         # determine if sentiment is positive, negative, or neutral
         if tweet.sentiment.polarity < 0:
@@ -105,7 +107,6 @@ class TweetStreamListener(StreamListener):
                 item_type = "image"
             else:
                 item_type = dict_data["entities"]["media"][0]["type"]
-
 
         if not retweeted_status:
             user_id = dict_data["user"]["id"]
@@ -145,13 +146,14 @@ class TweetStreamListener(StreamListener):
             db_session.commit()
 
         tw = Item(message=message,
+                contestant=contestant,
                 item_id=item_id,
                 item_type=item_type,
                 item_url=item_url,
                 location=location,
                 date=date,
                 source="twitter",
-                polarity=emphasis(tweet),
+                polarity=emphasis(tweet), # nlp_textblob.py
                 subjectivity=tweet.sentiment.subjectivity,
                 sentiment=sentiment,
                 favorite_count=favorite_count,
@@ -161,27 +163,10 @@ class TweetStreamListener(StreamListener):
 
         try:
             # words
-            words = clean_words(tweet)
+            words = clean_words(tweet) # nlp_textblob.py
             for w in words:
-
-
-                # pre-sentiment score:
-                # all caps / exclamation = more intense
-                # smily faces
-                # stretch out common slang (e.g. LOL = laughing out loud)
-                # shorten words (e.g. cooooooool = coool)                
-
-                # Pre-storage:
-                # get rid of stop words
-                # clean punctuation
-                # capitalisation
-                # remove symbols
-                # remove hashtags
-                # remove urls
-                # pluralisation?
-
-
-
+                if len(w)>100:
+                    continue
                 w_obj = Word(word=w)
                 db_session.add(w_obj)
                 db_session.commit()
@@ -192,16 +177,21 @@ class TweetStreamListener(StreamListener):
             if dict_data["entities"]["hashtags"]:
                 tags = dict_data["entities"]["hashtags"]
                 for t in tags:
+                    if len(t)>100:
+                        continue
                     t_obj = Hashtag(hashtag=t["text"])
                     db_session.add(t_obj)
                     db_session.commit()
                     tw.hashtags.append(t_obj)
                     u.hashtags.append(t_obj)
 
+            # to add... URL table!!
+
             db_session.add(u)
             db_session.commit()
             db_session.add(tw)
             db_session.commit()
+
         except OperationalError:
             db_session.rollback()
 

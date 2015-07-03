@@ -1,6 +1,9 @@
 import time
 from tweepy import OAuthHandler
 import tweepy
+from sngsql.database import Base, db_session, engine
+from sngsql.model import Follower
+
 
 # import twitter keys and tokens
 from config import *
@@ -8,25 +11,43 @@ from config import *
 # set twitter keys/tokens
 auth = OAuthHandler(consumer_key, consumer_secret)
 auth.set_access_token(twitter_access_token, access_token_secret)
-
-
-
 api = tweepy.API(auth)
 
-ids = []
-#can use userid or sn (e.g. user_id=12345)
-for page in tweepy.Cursor(api.followers_ids, screen_name="gymboxofficial").pages():
-    ids.extend(page)
-    print (str(ids))
-    time.sleep(60)
 
-print (len(ids))
+TOP_USERS = ['28785486', '430235090', '1494835716', '66237835', '51241574', '426802833', '390914341', '136300373', '20595504', '121158213', '49620730', '18142010', '222481411', '138977055', '251686253', '93419194', '160561725', '15486485', '1571239068', '87271106', '2411648228', '123276343', '633928540', '224351791', '533670216', '41186732', '17078632', '95431448', '14101232', '54516496', '5695632', '16334281', '16184358', '28885875', '27649741', '15845694', '846493376', '292374563', '2726311681', '74144130', '41995398', '155260626', '312149882', '315878798', '33960482', '13049362', '17934084', '67293615', '23482952', '2546562188', '359122436', '110363115', '21215371', '48761924', '377129602', '73408582', '219937434', '107547335', '258122983', '2474180017', '3040107153', '1629569760', '634676291', '557455977', '241776425', '22179997', '26020465', '2912118236', '16312576', '48038030', '1691392716', '587875070', '51520631', '110827653', '20281013', '28420827', '857001662', '25053299', '2716100047', '167075172', '8936082', '15545122', '27789999', '770759270', '250524643', '479562736', '22188774', '53130511', '18989336', '2487597752', '46955476', '230859523', '604940737', '2473980098', '17810599', '17837463', '21612122', '278093318', '15458694', '14511951', '320726331', '473461093', '16973333', '40874240', '292590965', '17094311', '246103', '958155200', '58869220', '100779526', '7259302', '29216764', '21965432', '552421902', '190906595', '48459553', '14352534', '16265550', '11866582', '19218108', '18061792', '14553620', '607558430', '50434933', '74552263', '16813752', '1912522274', '129235890', '2898075617', '15908473', '69350553', '221969181', '29465136', '17436250', '829446506', '12134692', '15914986', '18510860', '2285490307', '73333278', '160136282', '17006036', '14173315', '2752677905', '45564482', '792660210', '475811383', '43922300', '149315713', '18810387', '1689378529', '149249831', '82500164', '146748118', '22162854', '235910137', '124814437', '531789353', '350424184', '15300388', '33611715', '59331128', '6351572', '542901683', '8953122', '47954642', '116261458', '41410702', '41207820', '15380567', '38122727', '115754870', '51775009', '16041234', '32341383', '21792170', '90480218', '968686122', '818941136', '16955991', '24272129', '1385806710', '849169945', '2321771472', '755113', '2464894184', '14800511', '34822892', '15164565', '319777415', '843565644', '51159230', '2473834436', '45747659', '7713202', '122207745', '146855039', '26909348', '1947303967', '17446621', '14293310', '14717197', '52117188', '409025449', '44135635', '21692297', '166329578', '179732982', '14377605', '1132189957', '54525773', '1608781524', '431698111', '16400030', '125221874', '586855139', '7998482', '191356406', '35785401', '403932208', '23818581', '17525171', '284812300', '176950935', '43930301', '20605217', '6576492', '21475090', '526119734', '2743327187', '282695161', '57174231', '46520074', '355416292', '15752446', '17642330', '1123137259', '634598384', '66533920', '349803020', '15170286', '15245653', '521928949', '1375859156', '15699147', '1445301248', '16302354', '119491006', '16988154', '894292836', '21982720', '19101611', '2842465811', '22637974', '1356992605', '182265955', '31455711', '9695312', '16312165', '420117089', '576358484', '18305815', '19489220', '29974662', '15063486', '225189494', '14267944', '10082812', '14857525', '15675138', '28279637', '2279678299', '171346034', '18686907', '14855994', '29417304', '103781329', '15950086', '1673802032', '14914938', '16721461', '12096202', '2883841', '16462209', '26820715', '15693493', '285626945', '96442308', '2188423838', '16076032', '372548499', '16031927', '24506246', '15075999', '45565185', '14529929', '28277184', '24439201', '17800215', '16244449', '376744269', '24733117', '16365255', '10292132', '90804267', '15956067', '19024627', '21268897', '156846320', '18993601', '19383317', '265122237', '112526560', '8534362', '15742985', '152358615', '53390485', '18388923', '486709214', '18922198', '2965788550', '15360796', '31544859', '23828118', '93069110', '26858764', '208361818', '15745368', '2962770649', '972651', '754135908', '18082945', '248782716', '15976697', '139909832', '2964339741', '13493302', '284894035', '531476360', '575684116', '167592087', '2196201139', '15210284', '34978859', '87995697', '45190383', '18197668', '14179819', '701725963', '807095', '45674330', '109854452', '1379501748', '136039679', '315577705', '417843722', '14221917', '16193325', '9300262', '14792049', '23480093', '14345062', '20344756', '37990581', '393469195', '250940553', '39294154', '180317088', '3761241', '15463671', '10648962', '39319668', '739743', '246394886', '310007700', '31057963', '18857913', '57385931', '14636374', '49021031', '868856461', '110596487', '14722676', '1947301', '77172302', '2242543022', '17291452', '18208120', '6577642', '20012204', '59500657', '2467791', '2544077335', '15893354', '767', '340904631', '340853126', '2543131938', '129970182', '1355741']
+# already stored: '21587082', '16329426', '1432029667', '204437035', '3100091952', '3103350108', '25770408',
+# TOP_USERS = ['10thAmendment', '13WHAM', '2ANow', '3PennyMovies', '831MARIANA04', '85REBA_Lea84', 'AACONS', 'ABC', 'AEIfdp', 'AIIAmericanGirI', 'AOL', 'AP', 'AP_Politics', 'AWIPSeries', 'AaronBlakeWP', 'Adapptise', 'AlertTrade', 'AliABCNews', 'AlleyP0p', 'American_Bridge', 'AndrewStilesUSA', 'AnikaNoniRose', 'ArthurA_P', 'ArtyAbsatz', 'Asher_Wolf', 'Astorix23', 'BCAppelbaum', 'BINGBINGFASHION', 'BarstoolBigCat', 'BeachinFree', 'BenSwann_', 'BledsoeChuck', 'BlueDuPage', 'BobbyJindal', 'BostonGlobe', 'BradMarston', 'BunkeredOnline', 'BuzzFeed', 'CBSMiami', 'CNNMoney', 'CO2HOG', 'CTDems', 'CapTimes', 'Cap_Institute', 'CaptivatingNews', 'CarlaChamorros', 'CatholicLisa', 'ChefArtSmith', 'ChippyAV8', 'Chris_1791', 'ChuckNellis', 'ClancyReports', 'ComplexMag', 'ConservativeLA', 'Coondawg68', 'Cosmopolitan', 'CronkiteSays', 'DJROMANROXFORD', 'DahmPublishing', 'DamienFahey', 'DanKCharnley', 'DanMartin_cards', 'DataGenesis', 'DavidNelsonNews', 'DavidPapp', 'Deejayspiceey', 'Diana_Knop', 'DooleyFunnyAf', 'DooleyVids', 'DrTomMartinPhD', 'Drrake', 'DykstraDame', 'ENews', 'ETCanada', 'ETTalkShow', 'EW', 'ElMonte08', 'EmpowerNetCorp', 'EricShapiro3', 'EspuelasVox', 'EvaLongoria', 'EvanMcSan', 'FINALLEVEL', 'FiveRights', 'FortuneMagazine', 'FreedomChild3', 'FutConLab', 'Gawker', 'Gdad1', 'GeneMcVay', 'GetWisdomDude', 'Gianni862', 'GinsburgJobs', 'GloriaCampos', 'GoAngelo', 'Golf4Beginners', 'Golf_2_Win', 'GrahamDavidA', 'HarrietBaldwin', 'HeerJeet', 'Helen_Parker2', 'HipChat', 'HitFix', 'HotlineJosh', 'HuffPostLive', 'HuffPostPol', 'HuffingtonPost', 'IPOmaven', 'IceCreamEaterrr', 'Independent', 'Ivanroberson', 'JackBPR', 'JasonLeopold', 'JeffreyGuterman', 'Jelenaxoxo_', 'Jim_Peoples_', 'JodyField', 'JoeTrippi', 'Judgenap', 'Junebug1952', 'KandiRider', 'Karen', 'KatiePavlich', 'KevinMercuri', 'LAFoodie', 'LOLGOP', 'LSUJEFF', 'Latina', 'LeoBlakeCarter', 'Libertea2012', 'LifeNewsHQ', 'LifeNewsToo', 'Live5News', 'LiveBetsOnline', 'Lrihendry', 'MPenikas', 'MariaSansone', 'MarijuanaStocks', 'MattyIceAZ', 'Mediaite', 'MichaelSSchmidt', 'MichaelTetrick', 'MikeMadden', 'Mobute', 'MotherJones', 'MsAmericanPiee', 'MsRock4Ever', 'Mzone_Articles', 'NARAL', 'NBCNews', 'NYC_Everyday', 'NYMag', 'NahBabyNah', 'NaughtyBeyotch', 'NicDawes', 'Norsu2', 'OCAmericans', 'OSHIAMICHELLE', 'OhNoSheTwitnt', 'OriginalPSP', 'OzdilhDesign', 'PPact', 'PSchydlowski', 'PTSantilli', 'PaladaresMundo', 'PaperWash', 'PatDollard', 'PatVPeters', 'PhilipRucker', 'PhillyD', 'Playing_Dad', 'PolitiFact', 'PressClubDC', 'Pretty_Virtuous', 'RBPundit', 'RCdeWinter', 'RELEVANT', 'ROCKWITHBECK', 'RT_America', 'RachLWhitehurst', 'RawStory', 'ReinaaRoyale', 'RexHuppke', 'RichardGrenell', 'Ristolable', 'SOMEXlCAN', 'Salon', 'SamGrittner', 'SatansTongue', 'SayNoToGOP', 'Scott_R_Ellis', 'ShaunKing', 'ShiWantsTheC', 'SkanndTyagi', 'Skyduck64', 'Slate', 'Smith83K', 'SocialInKSCity', 'SocialPressBlog', 'Sofia_Vanessa1', 'SolarFred', 'SpeakerBoehner', 'SpecialReport', 'StreetTeamAC', 'SusanMyersBiz', 'THETXEMBASSY', 'THR', 'TIME', 'TPM', 'Take_Action__', 'Taxtreats', 'TeaPartyNevada', 'TheAdvocateMag', 'TheBaxterBean', 'TheDailyEdge', 'TheDemocrats', 'TheLibRepublic', 'TheMehulPatel', 'TheNewsUS', 'ThePolitiChicks', 'TiVo', 'TopShelFFEnt', 'Truth_Seeker59', 'USATOnPolitics', 'USEstate', 'UniNoticias', 'UniteBlueKY', 'VICE', 'Variety', 'VivianFabiolaV', 'VoteSmarts', 'WDRBNews', 'WGME', 'WNYC', 'WakaFlocka', 'WarAgainstWomen', 'WashDCOnline', 'WayneDupreeShow', 'WeirdReport', 'WestJournalism', 'WhoIsSizzle', 'WiStateJournal', 'YALiberty', 'YerOpinion', 'YoungBLKRepub', 'ZaidJilani', 'activist360', 'actlightning', 'alexanderchee', 'almomento360', 'almomento360hoy', 'amaeteumanah', 'americans4amer', 'americasvoice', 'amychozick', 'anon99percenter', 'areyou0', 'ariannahuff', 'astbnboy', 'aunewse', 'barstoolsports', 'bartmckinley', 'bcwilliams92', 'behindyourback', 'billboard', 'blackpolitics', 'bluechoochoo', 'breakingnews_90', 'brianmcarey', 'camashta', 'captsingh', 'catoletters', 'chaplinlives', 'clevelanddotcom', 'continimarco', 'csmonitor', 'cspan', 'dabeard', 'dailyEEUU', 'david_j_roth', 'davidfrum', 'deray', 'dockrasovsky', 'dylanmatt', 'dzine9', 'edstetzer', 'ellencarmichael', 'emilynussbaum', 'eonline', 'ergeekgoddess', 'etalkCTV', 'funnyordie', 'gaystarnews', 'gerfingerpoken', 'gerfingerpoken2', 'ggreenwald', 'gigabarb', 'greta', 'haaretzcom', 'hughhewitt', 'intelligencer', 'jaketapper', 'jamaicansdotcom', 'jameshohmann', 'jasoninthehouse', 'jbarro', 'jeffl76', 'jilevin', 'joefrancis', 'joelpollak', 'jojokejohn', 'joseiswriting', 'joshgreenman', 'joshtpm', 'julesk_fighter', 'julieplec', 'justjaredjr', 'kennytorrella', 'kenvogel', 'kwestin', 'lachlan', 'lasillarota', 'lelakibugis', 'lheal', 'liloharrys', 'lindiortega', 'lisa_robert1', 'ljarratt', 'luisitafernanda', 'madisondotcom', 'maggieNYT', 'maggiekb1', 'majorityfm', 'marcorubio', 'maria_lily3', 'mashable', 'mch7576', 'mcspocky', 'michaellally18', 'michellemalkin', 'micnews', 'mishel_ella', 'mmfa', 'moazzemeee05', 'morehouse64', 'motherearth16', 'mukhtaryare', 'mydaughtersarmy', 'nationaljournal', 'news3jessica', 'news_24_365', 'newsbusters', 'newsone', 'njdotcom', 'nowthisnews', 'nytimes', 'oceanshaman', 'ohiomail', 'ophidianpilot', 'patosins', 'paul_lander', 'peachynews', 'phillydotcom', 'plante', 'politico', 'politicususa', 'poniewozik', 'postpolitics', 'prespolitics', 'randyprine', 'redsteeze', 'richcasa', 'rjoseph7777', 'robertore62', 'rwneilljr', 'samsteinhp', 'seattlepi', 'seculardotorg', 'shareski', 'shutupmikeginn', 'solemnoathbeer', 'southsalem', 'stockejock', 'superconfirmado', 'superwuster', 'terri_georgia', 'texyellowdogdem', 'thaitvnews', 'theinquisitr', 'thenation', 'therealfrancia', 'tik_va', 'timothypmurphy', 'trscoop', 'usnews', 'usweekly', 'washdcnews', 'washingtonpost', 'worldvoipcenter', 'wpjenna', 'xeni', 'xtgolf', 'xtnetworks', 'ynnmedianetwork', 'zacharyatkins1']
 
-# naive ranking...
-# favorite count
-# retweat count
+for user in TOP_USERS:
+	ids = []
+	p = 1
+
+	#can use userid or sn (e.g. screen_name="xyz")
+	for page in tweepy.Cursor(api.followers_ids, user_id=user).pages():
+	    ids.extend(page)
+	    print ('User: ' + str(user) + '   Page ' + str(p) + ', sleeping 60 seconds... zzz... ')
+	    p+=1
+	    time.sleep(60)
+
+	# print (str(ids))
+	print ('User: ' + str(user) + '   Adding to database ' + len(ids) + ' ids')
+
+
+	for x in ids:
+		f = Follower(parent_id=user,
+		        child_id=x)
+		db_session.add(f)
+		db_session.commit()
+
+
+
+
+# naive ranking... use buckets
 
 # friends count
 # followers count
-# status count
-# tweet_score = (comment_percentile_weight * comment_percentile) + (views_percentile_weight * views_percentile)
+
+# tweet_score = item_score + user_score
+
+# item_score = (favorite_percentile_weight * favorite_percentile) + (share_percentile_weight * share_percentile)
+# user_score = (friends_percentile_weight * friends_percentile) + (followers_percentile_weight * followers_percentile)

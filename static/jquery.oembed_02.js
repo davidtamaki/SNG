@@ -120,7 +120,7 @@
     // Plugin defaults
     $.fn.oembed.defaults = {
         fallback: true,
-        maxWidth: 500, //DS 24/6/2015 Added maxwidth
+        maxWidth: null, //DS 01/7/2015 changed to null
         maxHeight: null,
         includeHandle: true,
         embedMethod: 'auto',

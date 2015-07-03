@@ -15,7 +15,9 @@ es = Elasticsearch()
 
 #change ID, search terms, min reqs for each event
 EVENT_ID = 1
-SEARCH_TERM = ['confederate flag']  # ['game of thrones','jon snow,daenerys,stannis,arya stark,sansa stark,tyrion,lannister,cersei']
+SEARCH_TERM = (['Bobby Jindal','Donald Trump','Jeb Bush','Rick Perry',
+    'Lindsey Graham','George Pataki','Rick Santorum','Mike Huckabee','Marco Rubio',
+    'Rand Paul','Ted Cruz','Chris Christie','Scott Walker','Hillary Clinton'])  # ['game of thrones','jon snow,daenerys,stannis,arya stark,sansa stark,tyrion,lannister,cersei']
 MIN_FOLLOWERS = 1000 #2000
 MIN_FRIENDS = 300 #500
 
