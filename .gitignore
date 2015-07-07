@@ -1,7 +1,8 @@
 *.pyc
 *.xls
+*.csv
 .DS_Store
 config.py
-get_access_token.py
+archive/
 es_index_output.txt
 pg_index_output.txt

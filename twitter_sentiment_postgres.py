@@ -1,8 +1,6 @@
-import json
-import time
+import json, time
 from tweepy.streaming import StreamListener
-from tweepy import OAuthHandler
-from tweepy import Stream
+from tweepy import OAuthHandler, Stream
 from textblob import TextBlob
 # from textblob.sentiments import NaiveBayesAnalyzer
 from sngsql.database import Base, db_session, engine
@@ -11,8 +9,6 @@ from nlp_textblob import *
 from sqlalchemy.sql import exists, update
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
-
-# import twitter keys and tokens
 from config import *
 
 
@@ -40,21 +36,33 @@ class TweetStreamListener(StreamListener):
             print ("invalid format: no user found, skip." + "\n")
             return
 
-        # check if retweet
+        # check if retweet/quote/retweet-quote
+        retweeted_quoted_status = False
         retweeted_status = bool("retweeted_status" in dict_data)
+        if retweeted_status:
+            retweeted_quoted_status = bool("quoted_status" in dict_data["retweeted_status"])
+        quoted_status = bool("quoted_status" in dict_data)
 
         # check if duplication and skip tweets with users with less than req threshold
-        if not retweeted_status:
+        # if not retweeted_status:
             # if dict_data["user"]["followers_count"]<MIN_FOLLOWERS or dict_data["user"]["friends_count"]<MIN_FRIENDS:
             #     print ("less than user metric threshold for storage, skip." + "\n")
             #     return
-            id_str = dict_data["id_str"]
-
-        else:
+        #     id_str = dict_data["id_str"]
+        # else:
             # if dict_data["retweeted_status"]["user"]["followers_count"]<MIN_FOLLOWERS or dict_data["retweeted_status"]["user"]["friends_count"]<MIN_FRIENDS:
             #     print ("less than user metric threshold for storage, skip." + "\n")
             #     return            
+            # id_str = dict_data["retweeted_status"]["id_str"]
+
+        if retweeted_quoted_status:
+            id_str = dict_data["retweeted_status"]["quoted_status"]["id_str"]
+        elif retweeted_status:
             id_str = dict_data["retweeted_status"]["id_str"]
+        elif quoted_status:
+            id_str = dict_data["quoted_status"]["id_str"]
+        else:
+            id_str = dict_data["id_str"]
 
 
 
@@ -64,10 +72,20 @@ class TweetStreamListener(StreamListener):
         (ret, ), = db_session.query(exists().where(Item.item_id==str(id_str)))
         if ret: 
             # Item already exists. Update share_count & favorite_count
-            if retweeted_status:
+            if retweeted_quoted_status:
+                record = db_session.query(Item).filter(Item.item_id==id_str).one()
+                record.favorite_count=dict_data["retweeted_status"]["quoted_status"]["favorite_count"]
+                record.share_count=dict_data["retweeted_status"]["quoted_status"]["retweet_count"]
+                db_session.flush()
+            elif retweeted_status:
                 record = db_session.query(Item).filter(Item.item_id==id_str).one()
                 record.favorite_count=dict_data["retweeted_status"]["favorite_count"]
                 record.share_count=dict_data["retweeted_status"]["retweet_count"]
+                db_session.flush()
+            elif quoted_status:
+                record = db_session.query(Item).filter(Item.item_id==id_str).one()
+                record.favorite_count=dict_data["quoted_status"]["favorite_count"]
+                record.share_count=dict_data["quoted_status"]["retweet_count"]
                 db_session.flush()
             print ('Duplication caught. Updated favorite & share count. ID: ' + str(id_str) + '\n')
             return
@@ -79,18 +97,39 @@ class TweetStreamListener(StreamListener):
         # f.close()
 
         # pass tweet into TextBlob
-        if not retweeted_status:
-            tweet = TextBlob(dict_data["text"])
-        else:
+        if retweeted_quoted_status:
+            tweet = TextBlob(dict_data["retweeted_status"]["quoted_status"]["text"])
+        elif retweeted_status:
             tweet = TextBlob(dict_data["retweeted_status"]["text"])
+        elif quoted_status:
+            tweet = TextBlob(dict_data["quoted_status"]["text"])
+        else:
+            tweet = TextBlob(dict_data["text"])
 
-        # find contestant
-        contestant = 'Unknown'
+        # tag contestant
+        contestant = None
         for x in SEARCH_TERM:       
             if all (n.lower() in tweet.lower() for n in x.split()):
                 print (x)
                 contestant = str(x)
                 break
+        if contestant is None:
+            print ('searching url...')
+            for x in SEARCH_TERM:
+                if all (n.lower() in str(dict_data["entities"]["urls"][0]["expanded_url"]).lower() for n in x.split()):
+                    print (x)
+                    contestant = str(x)
+                    break
+        if contestant is None:
+            print ('searching any match...')
+            for x in SEARCH_TERM:       
+                if any (n.lower() in tweet.lower() for n in x.split()):
+                    print (x)
+                    contestant = str(x)
+                    break
+        if contestant is None:
+            print ('CONTESTANT NOT FOUND')
+            return
 
         # determine if sentiment is positive, negative, or neutral
         if tweet.sentiment.polarity < 0:
@@ -109,18 +148,18 @@ class TweetStreamListener(StreamListener):
             else:
                 item_type = dict_data["entities"]["media"][0]["type"]
 
-        if not retweeted_status:
-            user_id = dict_data["user"]["id"]
-            screen_name = dict_data["user"]["screen_name"]
-            location = dict_data["user"]["location"]
-            followers_count = dict_data["user"]["followers_count"]
-            friends_count = dict_data["user"]["friends_count"]
-            statuses_count = dict_data["user"]["statuses_count"]
-            date = time.strftime('%Y-%m-%dT%H:%M:%S', time.strptime(dict_data["created_at"],'%a %b %d %H:%M:%S +0000 %Y'))
-            favorite_count = dict_data["favorite_count"] #should be 0
-            share_count = dict_data["retweet_count"] #should be 0
-            message = dict_data["text"]
-        else:
+        if retweeted_quoted_status:
+            user_id = dict_data["retweeted_status"]["quoted_status"]["user"]["id"]
+            screen_name = dict_data["retweeted_status"]["quoted_status"]["user"]["screen_name"]
+            location = dict_data["retweeted_status"]["quoted_status"]["user"]["location"]
+            followers_count = dict_data["retweeted_status"]["quoted_status"]["user"]["followers_count"]
+            friends_count = dict_data["retweeted_status"]["quoted_status"]["user"]["friends_count"]
+            statuses_count = dict_data["retweeted_status"]["quoted_status"]["user"]["statuses_count"]
+            date = time.strftime('%Y-%m-%dT%H:%M:%S', time.strptime(dict_data["retweeted_status"]["quoted_status"]["created_at"],'%a %b %d %H:%M:%S +0000 %Y'))
+            favorite_count = dict_data["retweeted_status"]["quoted_status"]["favorite_count"]
+            share_count = dict_data["retweeted_status"]["quoted_status"]["retweet_count"]
+            message = dict_data["retweeted_status"]["quoted_status"]["text"]
+        elif retweeted_status:
             user_id = dict_data["retweeted_status"]["user"]["id"]
             screen_name = dict_data["retweeted_status"]["user"]["screen_name"]
             location = dict_data["retweeted_status"]["user"]["location"]
@@ -131,6 +170,28 @@ class TweetStreamListener(StreamListener):
             favorite_count = dict_data["retweeted_status"]["favorite_count"]
             share_count = dict_data["retweeted_status"]["retweet_count"]
             message = dict_data["retweeted_status"]["text"]
+        elif quoted_status:
+            user_id = dict_data["quoted_status"]["user"]["id"]
+            screen_name = dict_data["quoted_status"]["user"]["screen_name"]
+            location = dict_data["quoted_status"]["user"]["location"]
+            followers_count = dict_data["quoted_status"]["user"]["followers_count"]
+            friends_count = dict_data["quoted_status"]["user"]["friends_count"]
+            statuses_count = dict_data["quoted_status"]["user"]["statuses_count"]
+            date = time.strftime('%Y-%m-%dT%H:%M:%S', time.strptime(dict_data["quoted_status"]["created_at"],'%a %b %d %H:%M:%S +0000 %Y'))
+            favorite_count = dict_data["quoted_status"]["favorite_count"]
+            share_count = dict_data["quoted_status"]["retweet_count"]
+            message = dict_data["quoted_status"]["text"]
+        else:
+            user_id = dict_data["user"]["id"]
+            screen_name = dict_data["user"]["screen_name"]
+            location = dict_data["user"]["location"]
+            followers_count = dict_data["user"]["followers_count"]
+            friends_count = dict_data["user"]["friends_count"]
+            statuses_count = dict_data["user"]["statuses_count"]
+            date = time.strftime('%Y-%m-%dT%H:%M:%S', time.strptime(dict_data["created_at"],'%a %b %d %H:%M:%S +0000 %Y'))
+            favorite_count = dict_data["favorite_count"] #should be 0
+            share_count = dict_data["retweet_count"] #should be 0
+            message = dict_data["text"]
         item_id = id_str
         item_url = 'https://twitter.com/' + str(screen_name) + '/status/' + str(item_id)
 

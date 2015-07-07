@@ -85,3 +85,7 @@ from item
 where message similar to '%[\U0001F600-\U0001F6FF]%'
 
 
+#u update fav / share count
+UPDATE item SET favorite_count = '2000', share_count = '1800' WHERE item_id= '617592269621694464';
+UPDATE item SET favorite_count = '2000', share_count = '1800' WHERE item_id= '617527052086976512';
+

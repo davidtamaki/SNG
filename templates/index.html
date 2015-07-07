@@ -2,6 +2,8 @@
 <html lang="en">
   <head>
     <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="{{url_for('static', filename='jquery.embed.css') }}"/>
+    <link rel="stylesheet" href="{{url_for('static', filename='jquery.oembed.css') }}"/>
 
     <script>
       function init() {
@@ -12,7 +14,8 @@
 
   </head>
   <body>
-    <div class="container">
+
+    <div class="container"> <!-- container start -->
       <div class="header">
         <h3 class="text-muted">Social News Generator: Trending Thoughts</h3>
       </div>
@@ -80,19 +83,15 @@
 
 
     <!-- FOR EMBED-JS, CSS, & JQUERY, OEMBED  -->
-    <link rel="stylesheet" href="{{url_for('static', filename='jquery.embed.css') }}"/>
-    <link rel="stylesheet" href="{{url_for('static', filename='jquery.oembed.css') }}"/>
-    <link rel="stylesheet" href="{{url_for('static', filename='simplePagination.css') }}"/>
-
     <script type=text/javascript src="{{url_for('static', filename='jquery.min.js') }}"></script>
-    <script type=text/javascript src="{{url_for('static', filename='jquery.simplePagination.js') }}"></script>
     <script type=text/javascript src="{{url_for('static', filename='jquery.jscroll.js') }}"></script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/highlight.min.js"></script>
     <script src="http://platform.twitter.com/widgets.js"></script>
 
     <script type=text/javascript src="{{url_for('static', filename='jquery.embed.js') }}"></script>
-    <script type=text/javascript src="{{url_for('static', filename='jquery.oembed_02.js') }}"></script>
+    <script type=text/javascript src="{{url_for('static', filename='jquery.oembed.js') }}"></script>
+
 
     <!-- FOR JQUERY, UNDERSCORE, BACKBONE -->
     <script src="http://documentcloud.github.com/underscore/underscore-min.js"></script>

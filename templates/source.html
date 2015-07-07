@@ -1,7 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/2.3.2/css/bootstrap.css"/>
+    <link rel="stylesheet" href="{{url_for('static', filename='jquery.embed.css') }}"/>
+    <link rel="stylesheet" href="{{url_for('static', filename='jquery.oembed.css') }}"/>
 
     <script>
       function init() {
@@ -19,9 +21,8 @@
       <hr/>
 
 
-      <div class="pagination-holder clearfix">
-       <div id="light-pagination" class="pagination"></div>
-     </div>
+    {{ pagination.info }}
+    {{ pagination.links }}
 
       Top 10 Positive Items:<br />
       <ul>
@@ -46,34 +47,21 @@
 
 
     <!-- FOR EMBED-JS, CSS, & JQUERY, OEMBED  -->
-    <link rel="stylesheet" href="{{url_for('static', filename='jquery.embed.css') }}"/>
-    <link rel="stylesheet" href="{{url_for('static', filename='jquery.oembed.css') }}"/>
-    <link rel="stylesheet" href="{{url_for('static', filename='simplePagination.css') }}"/>
-
     <script type=text/javascript src="{{url_for('static', filename='jquery.min.js') }}"></script>
-    <script type=text/javascript src="{{url_for('static', filename='jquery.simplePagination.js') }}"></script>
     <script type=text/javascript src="{{url_for('static', filename='jquery.jscroll.js') }}"></script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/highlight.min.js"></script>
     <script src="http://platform.twitter.com/widgets.js"></script>
 
     <script type=text/javascript src="{{url_for('static', filename='jquery.embed.js') }}"></script>
-    <script type=text/javascript src="{{url_for('static', filename='jquery.oembed_02.js') }}"></script>
+    <script type=text/javascript src="{{url_for('static', filename='jquery.oembed.js') }}"></script>
+
 
     <!-- FOR JQUERY, UNDERSCORE, BACKBONE -->
     <script src="http://documentcloud.github.com/underscore/underscore-min.js"></script>
     <script src="http://documentcloud.github.com/backbone/backbone-min.js"></script>
 
     <script>
-    $(function() {
-        $("#light-pagination").pagination({
-            items: {{total}},
-            itemsOnPage: 10,
-            cssStyle: 'light-theme',
-            hrefTextPrefix:''
-        });
-    });
-
     $(document).ready(function(){
       $('.scroll').jscroll({
       loadingHtml: '<img src="loading.gif" alt="Loading" /> Loading...',

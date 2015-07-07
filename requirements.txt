@@ -1,10 +1,16 @@
+alembic==0.7.6
 elasticsearch==1.6.0
 elasticsearch-dsl==0.0.4
 Flask==0.10.1
 Flask-Cache==0.13.1
+Flask-Migrate==1.4.0
+flask-paginate==0.3.2
+Flask-Script==2.0.5
+Flask-SQLAlchemy==2.0
 httplib2==0.9.1
 itsdangerous==0.24
 Jinja2==2.7.3
+Mako==1.0.1
 MarkupSafe==0.23
 nltk==3.0.3
 oauthlib==0.7.2
