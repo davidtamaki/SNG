@@ -12,14 +12,6 @@ from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 from config import *
 
 
-#change ID, search terms, min reqs for each event
-EVENT_ID = 1
-SEARCH_TERM = (['Bobby Jindal','Donald Trump','Jeb Bush','Rick Perry',
-    'Lindsey Graham','George Pataki','Rick Santorum','Mike Huckabee','Marco Rubio',
-    'Rand Paul','Ted Cruz','Chris Christie','Scott Walker','Hillary Clinton'])
-MIN_FOLLOWERS = 0 #2000
-MIN_FRIENDS = 0 #500
-
 class TweetStreamListener(StreamListener):
 
     # on success
@@ -43,27 +35,28 @@ class TweetStreamListener(StreamListener):
             retweeted_quoted_status = bool("quoted_status" in dict_data["retweeted_status"])
         quoted_status = bool("quoted_status" in dict_data)
 
-        # check if duplication and skip tweets with users with less than req threshold
-        # if not retweeted_status:
-            # if dict_data["user"]["followers_count"]<MIN_FOLLOWERS or dict_data["user"]["friends_count"]<MIN_FRIENDS:
-            #     print ("less than user metric threshold for storage, skip." + "\n")
-            #     return
-        #     id_str = dict_data["id_str"]
-        # else:
-            # if dict_data["retweeted_status"]["user"]["followers_count"]<MIN_FOLLOWERS or dict_data["retweeted_status"]["user"]["friends_count"]<MIN_FRIENDS:
-            #     print ("less than user metric threshold for storage, skip." + "\n")
-            #     return            
-            # id_str = dict_data["retweeted_status"]["id_str"]
 
+        # check if duplication and skip tweets with users with less than req threshold
         if retweeted_quoted_status:
+            if dict_data["retweeted_status"]["quoted_status"]["user"]["followers_count"]<MIN_FOLLOWERS or dict_data["retweeted_status"]["quoted_status"]["user"]["friends_count"]<MIN_FRIENDS:
+                print ("less than user metric threshold for storage, skip." + "\n")
+                return
             id_str = dict_data["retweeted_status"]["quoted_status"]["id_str"]
         elif retweeted_status:
+            if dict_data["retweeted_status"]["user"]["followers_count"]<MIN_FOLLOWERS or dict_data["retweeted_status"]["user"]["friends_count"]<MIN_FRIENDS:
+                print ("less than user metric threshold for storage, skip." + "\n")
+                return
             id_str = dict_data["retweeted_status"]["id_str"]
         elif quoted_status:
+            if dict_data["quoted_status"]["user"]["followers_count"]<MIN_FOLLOWERS or dict_data["quoted_status"]["user"]["friends_count"]<MIN_FRIENDS:
+                print ("less than user metric threshold for storage, skip." + "\n")
+                return
             id_str = dict_data["quoted_status"]["id_str"]
-        else:
+        else: #### OK
+            if dict_data["user"]["followers_count"]<MIN_FOLLOWERS or dict_data["user"]["friends_count"]<MIN_FRIENDS:
+                print ("less than user metric threshold for storage, skip." + "\n")
+                return
             id_str = dict_data["id_str"]
-
 
 
         ### Testing time to index postgres ###
@@ -87,7 +80,7 @@ class TweetStreamListener(StreamListener):
                 record.favorite_count=dict_data["quoted_status"]["favorite_count"]
                 record.share_count=dict_data["quoted_status"]["retweet_count"]
                 db_session.flush()
-            print ('Duplication caught. Updated favorite & share count. ID: ' + str(id_str) + '\n')
+            print ('Retweet caught. Updated favorite & share count. ID: ' + str(id_str) + '\n')
             return
 
         # elapsed_time = time.process_time() - t # T end
@@ -130,6 +123,9 @@ class TweetStreamListener(StreamListener):
         if contestant is None:
             print ('CONTESTANT NOT FOUND')
             return
+
+        # preprocess tweet in nlp_textblob
+        preprocess_tweet(str(tweet))
 
         # determine if sentiment is positive, negative, or neutral
         if tweet.sentiment.polarity < 0:

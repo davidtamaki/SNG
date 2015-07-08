@@ -1,0 +1,87 @@
+Preprocessing - data cleansing
+	1 remove retweets (RT) and urls
+	# 2 restore populare abbreviations (e.g. wknd --> weekend)
+	3 keep punctions and shoutouts as is
+	4 sentence segmentation (break tweet into individual sentences)
+	5 tokenise and perform part of speech (POS) tagging for each sentence
+
+
+# Sentence type detection (3 main types in tweets)
+#  	1 Declarative sentence: it states a view of the author, e.g. “this is a pretty good phone.”
+#  	2 Imperative sentence: it gives a command or request, e.g. “do not buy phone xyz.”
+#  	3 Interrogative sentence: it asks a question, e.g. “what is the best HP desktop in market?”
+
+#  	1 & 2 - have opinions, keep
+#  	3 - no opinion, neutral
+
+#  	Interrogative sentences usually have the form:
+#  	“model word + auxiliary verb + ...” “...+ question mark”
+
+#  	“model word” refers to the first word in the sentence. It should belongs to the word set {what, where, when, why, who}.
+
+#  	Auxiliary verb should belong to word set {am, is, are, was, were, am, do, did, does}.
+
+#  	Question mark should be the last token in the sentence.
+
+
+Coreference Resolution
+	hueristic rule (e.g. the closest entity) for coreference resolution for pronouns and referring expressions (RE)
+
+	For example, in a tweet, “I bought this iPhone yesterday. It is awesome!”. We can resolve that “it” in the second sentence refers to “iPhone” in the first sentence as “iPhone” is the closest entity to “it”.
+
+
+Opinion Lexicon
+	- 2 lists of words that are associated with a desirable state (positive) and undeseriable state (negative)
+	- opinion polarity normally applies to adjectives and adverbs, there are verb and noun opinion words as well.
+	- enrich lists with opinion hashtags of twitter (e.g. #fail)
+
+
+Aggregating Opinions for an Entity in a Sentence:
+	- Given a sentence s containing the user-given entity, opinion words in the sentence are first identified by matching with the words in the opinion lexicon.
+
+	- Then compute an orientation score for the entity e. A positive word is assigned the semantic orientation score of +1, and a negative word is assigned the semantic orientation score of -1.
+
+	- All the scores are then summed up with weights for each opinion word so that low weights are applied to opinion words that are far away from the entity e.
+
+
+Comparative Sentences:
+	- If sentence is comparing multiple entities, do not use aggregation rule
+	- First detect comparative word by its corresponding POS Tagging. E.g., JJR (comparative adjective), RBR (comparative verb), JJS (superlative adjective and RBS (superlative adverb) are good indicators for comparison sentences.
+
+	- Then we exploit the following two patterns to identify entities in a comparative sentence. Pattern (a) refers to regular comparatives and superlatives forms of com- parison. The pattern (b) refers to the equative form of comparison.
+
+	(a) entities +. . . + compword + . . . + entities
+	(b) entities +...+ as JJ + ...+ entities
+
+	compword is a comparative word. Entity is the entity name in the sentence, which can be identified by its POS tagging - NN or NNP.
+
+	Based on the opinion mining, if the sentence is positive, then the entities before the comparative keyword are superior and otherwise they are inferior (with the negation considered). Superlative sentences can be handled in a similar way. Note that equative comparisons do not express preferences.
+
+
+Opinion Rules:
+	- Negation rules: A negation word or phrase usually reverses the opinion expressed in a sentence. Negation words include “no” “not”, etc. e.g. “this cellphone is not good.”
+	- But-clause rules: A sentence containing “but” also needs special treatment. The opinion before “but” and after “but” are usually the opposite to each other. Phrases such as “except that” “except for” behave similarly.
+	- Decreasing and increasing rules: This set of rules says that deceasing or increasing the quantities associated with some opinionated items may change the orientations of the opinions. For example, “The drug eases my pain greatly”. Here “pain” is a negative opinion word in the opinion lexicon, and the reduction of “pain” indicates a desirable effect of the drug. Note that we compile a corresponding verb list for these kind of actions, which include “increase”, “decease”, “diminish”, etc. The basic rules are as follows:
+
+	Decreased Neg --> Positive
+	e.g.: “My problem has certainly diminished.”
+
+	Decreased Pos --> Negative
+	e.g.: “The iPad costs me a fortune.”
+
+
+Handling Context-Dependent Opinions
+	- Use a conjunction rule to determine the opinion polarity.
+	- For example, if in a tweet, people write a sentence like “The movie is really fun and the plot was un- expected”. From this example, we can discover that “unexpected” is positive for “plot” because it is conjoined with the positive opinion word “fun”
+
+
+
+
+1 look at hashtag to id candidate and polarity
+2 if ambiguous, do text analysis
+	count num of candidates
+		if >1:
+			do something
+		else
+			count num + and - words and emoji
+			factor in negation

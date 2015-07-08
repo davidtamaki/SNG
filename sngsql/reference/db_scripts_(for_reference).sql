@@ -5,6 +5,31 @@ GROUP BY word
 HAVING count(word)>1
 ORDER BY count(word) DESC
 
+
+# avg sentiment by hashtag for each contestant
+select hashtag, 
+	round(cast(avg(polarity) as numeric),2) as polarity,
+	count(polarity) as total,
+	count(case when sentiment ='negative' then sentiment else null end) as negative,
+	count(case when sentiment ='neutral' then sentiment else null end) as neutral,
+	count(case when sentiment ='positive' then sentiment else null end) as positive,
+	sum(share_count) as total_retweet_count
+from item_hashtag
+join item on item_hashtag.item_id=item.id
+join hashtag on item_hashtag.hashtag_id=hashtag.id
+where contestant = 'Donald Trump'
+group by hashtag
+order by sum(share_count) desc
+
+
+# tweets with data on hashtags
+select contestant, sentiment, round(cast(polarity as numeric),2) as polarity, share_count, message
+from item_hashtag
+join item on item_hashtag.item_id=item.id
+join hashtag on item_hashtag.hashtag_id=hashtag.id
+where hashtag = 'Clinton'
+
+
 # average sentiment scores of contestants
 select contestant, round(cast(avg(polarity) as numeric),2), count(polarity) as total,
 	count(case when sentiment ='negative' then sentiment else null end) as negative,
@@ -84,6 +109,10 @@ select *
 from item
 where message similar to '%[\U0001F600-\U0001F6FF]%'
 
+# messages with questions
+select item_id, message, sentiment, polarity
+from item
+where message similar to '%\?%'
 
 #u update fav / share count
 UPDATE item SET favorite_count = '2000', share_count = '1800' WHERE item_id= '617592269621694464';
