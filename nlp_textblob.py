@@ -15,25 +15,25 @@ def consecutive(string):
 
 # added emphasis to scoring
 # input TextBlob object, output revised polarity score
-def emphasis(TB):
-    # print (TB.sentiment.polarity) 
-    if TB.sentiment.polarity!=0:
-        points=0
-        for w in TB.words:
-            if w.isupper():
-                # print ('upper case word found: ' + str(w))
-                points+=1
-            if consecutive(w):
-                # print ('found >3 consecutive chars.. ' + str(w))
-                points+=1
+# def emphasis(TB):
+#     # print (TB.sentiment.polarity) 
+#     if TB.sentiment.polarity!=0:
+#         points=0
+#         for w in TB.words:
+#             if w.isupper():
+#                 # print ('upper case word found: ' + str(w))
+#                 points+=1
+#             if consecutive(w):
+#                 # print ('found >3 consecutive chars.. ' + str(w))
+#                 points+=1
 
-        # print (str(points))
-        polarity = TB.sentiment.polarity * min(2,(1 + (points/10)))
-        if abs(polarity)>1:
-            polarity = polarity / abs(polarity)
-        return polarity
-    else:
-        return 0
+#         # print (str(points))
+#         polarity = TB.sentiment.polarity * min(2,(1 + (points/10)))
+#         if abs(polarity)>1:
+#             polarity = polarity / abs(polarity)
+#         return polarity
+#     else:
+#         return 0
 
 
 # for loading into db
@@ -62,13 +62,15 @@ def clean_words(TB):
 
 # clean tweet before applying sentiment analysis
 # input dirty string, output clean TextBlob object
-def preprocess_tweet(tweetstring):
+def analyse_tweet(tweetstring):
     urls = re.findall('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', tweetstring)
     for u in urls:
         tweetstring = tweetstring.replace(u,'')
-    print (tweetstring)
 
+
+    # hashtag analysis
     hashtags = []
+    team = 'Unknown'
     for word in tweetstring.split():
         if word[0] == '#':
             hashtags.append(word[1:].lower())
@@ -77,41 +79,93 @@ def preprocess_tweet(tweetstring):
         for h in hashtags:
             if h in DEMOCRAT:
                 print ('democrat tag: ' + h)
+                team = 'Democrat'
+                break
             elif h in REPUBLICAN:
                 print ('republican tag ' + h)
+                team = 'Republican'
+                break
 
+    # if hashtag is xyz2016, set instant sentiment and return
+    
+    TB = TextBlob(tweetstring)
 
+    # tag contestant
+    contestant = None
+    for x in SEARCH_TERM:       
+        if all (n.lower() in TB.words.lower() for n in x.split()):
+            print (x)
+            contestant = str(x)
+            break
+    # if contestant is None:
+    #     print ('searching url...')
+    #     for x in SEARCH_TERM:
+    #         if all (n.lower() in str(dict_data["entities"]["urls"][0]["expanded_url"]).lower() for n in x.split()):
+    #             print (x)
+    #             contestant = str(x)
+    #             break
+    if contestant is None:
+        print ('searching any match...')
+        for x in SEARCH_TERM:       
+            if any (n.lower() in TB.words.lower() for n in x.split()):
+                print (x)
+                contestant = str(x)
+                break
+
+    # need to compare multiple candidates in message
+    # set team to candidate's party
+
+    # sentiment analysis
     p, n = 0, 0
-    for word in tweetstring.split():
+    negation_rule = False
+    for word in TB.words:
         # words strips out emoticons (only matches emoji)
-        if binarySearch(POSITIVE, word.lower()) or word in POS_EMOJI:
+        # if word in POS_EMOJI:
+        if word.lower() in NEGATION:
+            print ('negation word: ' + word)
+            negation_rule = True
+            continue
+        if binarySearch(POSITIVE, word.lower()):
+            if negation_rule == True:
+                print ('negation on pos: ' + word)
+                n+=1
+                negation_rule = False
+                continue
             print ('pos: ' + word)
             p+=1
-        elif binarySearch(NEGATIVE, word.lower()) or word in NEG_EMOJI:
+            continue
+        elif binarySearch(NEGATIVE, word.lower()):
+            if negation_rule == True:
+                print ('negation on neg: ' + word)
+                p+=1
+                negation_rule = False
+                continue
             print ('neg: ' + word)
             n+=1
+            continue
+        else:
+            negation_rule = False
+
     print ('positive = ' + str(p) + '   negative = ' + str(n))
     if p>n:
-        print ('positive!')
+        sentiment='positive'
     elif n>p:
-        print ('negative!')
+        sentiment='negative'
     else:
-        print ('neutral!')
+        sentiment='neutral'
 
+    return ({'sentiment':sentiment, 'team':team,
+        'hashtags':hashtags, 'urls':urls, 'contestant':contestant })
 
-
-
-
-
-
-
+# should return sentiment, team, hashtags, urls, contestant(s)
+# add emoticon and emoji search
 
 
 def binarySearch(alist, item):
     first = 0
     last = len(alist)-1
     found = False
-
+    
     while first<=last and not found:
         midpoint = (first + last)//2
         if alist[midpoint] == item:

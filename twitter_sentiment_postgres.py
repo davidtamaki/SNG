@@ -16,7 +16,6 @@ class TweetStreamListener(StreamListener):
 
     # on success
     def on_data(self, data):
-
         # sometimes tweepy send NoneType objects
         if data is None:
             return
@@ -42,21 +41,33 @@ class TweetStreamListener(StreamListener):
                 print ("less than user metric threshold for storage, skip." + "\n")
                 return
             id_str = dict_data["retweeted_status"]["quoted_status"]["id_str"]
+            tweet = dict_data["retweeted_status"]["quoted_status"]["text"]
+            favorite_count = dict_data["retweeted_status"]["quoted_status"]["favorite_count"]
+            share_count = dict_data["retweeted_status"]["quoted_status"]["retweet_count"]
         elif retweeted_status:
             if dict_data["retweeted_status"]["user"]["followers_count"]<MIN_FOLLOWERS or dict_data["retweeted_status"]["user"]["friends_count"]<MIN_FRIENDS:
                 print ("less than user metric threshold for storage, skip." + "\n")
                 return
             id_str = dict_data["retweeted_status"]["id_str"]
+            tweet = dict_data["retweeted_status"]["text"]
+            favorite_count = dict_data["retweeted_status"]["favorite_count"]
+            share_count = dict_data["retweeted_status"]["retweet_count"]
         elif quoted_status:
             if dict_data["quoted_status"]["user"]["followers_count"]<MIN_FOLLOWERS or dict_data["quoted_status"]["user"]["friends_count"]<MIN_FRIENDS:
                 print ("less than user metric threshold for storage, skip." + "\n")
                 return
             id_str = dict_data["quoted_status"]["id_str"]
-        else: #### OK
+            tweet = dict_data["quoted_status"]["text"]
+            favorite_count = dict_data["quoted_status"]["favorite_count"]
+            share_count = dict_data["quoted_status"]["retweet_count"]
+        else:
             if dict_data["user"]["followers_count"]<MIN_FOLLOWERS or dict_data["user"]["friends_count"]<MIN_FRIENDS:
                 print ("less than user metric threshold for storage, skip." + "\n")
                 return
             id_str = dict_data["id_str"]
+            tweet = dict_data["text"]
+            favorite_count = dict_data["favorite_count"] # should be 0
+            share_count = dict_data["retweet_count"] # should be 0
 
 
         ### Testing time to index postgres ###
@@ -65,21 +76,10 @@ class TweetStreamListener(StreamListener):
         (ret, ), = db_session.query(exists().where(Item.item_id==str(id_str)))
         if ret: 
             # Item already exists. Update share_count & favorite_count
-            if retweeted_quoted_status:
-                record = db_session.query(Item).filter(Item.item_id==id_str).one()
-                record.favorite_count=dict_data["retweeted_status"]["quoted_status"]["favorite_count"]
-                record.share_count=dict_data["retweeted_status"]["quoted_status"]["retweet_count"]
-                db_session.flush()
-            elif retweeted_status:
-                record = db_session.query(Item).filter(Item.item_id==id_str).one()
-                record.favorite_count=dict_data["retweeted_status"]["favorite_count"]
-                record.share_count=dict_data["retweeted_status"]["retweet_count"]
-                db_session.flush()
-            elif quoted_status:
-                record = db_session.query(Item).filter(Item.item_id==id_str).one()
-                record.favorite_count=dict_data["quoted_status"]["favorite_count"]
-                record.share_count=dict_data["quoted_status"]["retweet_count"]
-                db_session.flush()
+            record = db_session.query(Item).filter(Item.item_id==id_str).one()
+            record.favorite_count=favorite_count
+            record.share_count=share_count
+            db_session.flush()
             print ('Retweet caught. Updated favorite & share count. ID: ' + str(id_str) + '\n')
             return
 
@@ -89,51 +89,23 @@ class TweetStreamListener(StreamListener):
         # f.write(str(elapsed_time) + '  ' + str(db_session.query(Item).count()) + '\n')
         # f.close()
 
-        # pass tweet into TextBlob
-        if retweeted_quoted_status:
-            tweet = TextBlob(dict_data["retweeted_status"]["quoted_status"]["text"])
-        elif retweeted_status:
-            tweet = TextBlob(dict_data["retweeted_status"]["text"])
-        elif quoted_status:
-            tweet = TextBlob(dict_data["quoted_status"]["text"])
-        else:
-            tweet = TextBlob(dict_data["text"])
-
-        # tag contestant
-        contestant = None
-        for x in SEARCH_TERM:       
-            if all (n.lower() in tweet.lower() for n in x.split()):
-                print (x)
-                contestant = str(x)
-                break
-        if contestant is None:
-            print ('searching url...')
-            for x in SEARCH_TERM:
-                if all (n.lower() in str(dict_data["entities"]["urls"][0]["expanded_url"]).lower() for n in x.split()):
-                    print (x)
-                    contestant = str(x)
-                    break
-        if contestant is None:
-            print ('searching any match...')
-            for x in SEARCH_TERM:       
-                if any (n.lower() in tweet.lower() for n in x.split()):
-                    print (x)
-                    contestant = str(x)
-                    break
-        if contestant is None:
-            print ('CONTESTANT NOT FOUND')
-            return
 
         # preprocess tweet in nlp_textblob
-        preprocess_tweet(str(tweet))
+        tweet_dict = analyse_tweet(tweet)
 
-        # determine if sentiment is positive, negative, or neutral
-        if tweet.sentiment.polarity < 0:
-            sentiment = "negative"
-        elif tweet.sentiment.polarity == 0:
-            sentiment = "neutral"
-        else:
-            sentiment = "positive"
+        # could not locate candidate, skip
+        if tweet_dict['contestant'] is None:
+            print ('CONTESTANT NOT FOUND' + '\n')
+            return
+
+
+        # TextBlob - determine if sentiment is positive, negative, or neutral
+        # if tweet.sentiment.polarity < 0:
+        #     sentiment = "negative"
+        # elif tweet.sentiment.polarity == 0:
+        #     sentiment = "neutral"
+        # else:
+        #     sentiment = "positive"
 
         # select correct fields
         if "media" not in dict_data["entities"]:
@@ -152,9 +124,6 @@ class TweetStreamListener(StreamListener):
             friends_count = dict_data["retweeted_status"]["quoted_status"]["user"]["friends_count"]
             statuses_count = dict_data["retweeted_status"]["quoted_status"]["user"]["statuses_count"]
             date = time.strftime('%Y-%m-%dT%H:%M:%S', time.strptime(dict_data["retweeted_status"]["quoted_status"]["created_at"],'%a %b %d %H:%M:%S +0000 %Y'))
-            favorite_count = dict_data["retweeted_status"]["quoted_status"]["favorite_count"]
-            share_count = dict_data["retweeted_status"]["quoted_status"]["retweet_count"]
-            message = dict_data["retweeted_status"]["quoted_status"]["text"]
         elif retweeted_status:
             user_id = dict_data["retweeted_status"]["user"]["id"]
             screen_name = dict_data["retweeted_status"]["user"]["screen_name"]
@@ -163,9 +132,6 @@ class TweetStreamListener(StreamListener):
             friends_count = dict_data["retweeted_status"]["user"]["friends_count"]
             statuses_count = dict_data["retweeted_status"]["user"]["statuses_count"]
             date = time.strftime('%Y-%m-%dT%H:%M:%S', time.strptime(dict_data["retweeted_status"]["created_at"],'%a %b %d %H:%M:%S +0000 %Y'))
-            favorite_count = dict_data["retweeted_status"]["favorite_count"]
-            share_count = dict_data["retweeted_status"]["retweet_count"]
-            message = dict_data["retweeted_status"]["text"]
         elif quoted_status:
             user_id = dict_data["quoted_status"]["user"]["id"]
             screen_name = dict_data["quoted_status"]["user"]["screen_name"]
@@ -174,9 +140,6 @@ class TweetStreamListener(StreamListener):
             friends_count = dict_data["quoted_status"]["user"]["friends_count"]
             statuses_count = dict_data["quoted_status"]["user"]["statuses_count"]
             date = time.strftime('%Y-%m-%dT%H:%M:%S', time.strptime(dict_data["quoted_status"]["created_at"],'%a %b %d %H:%M:%S +0000 %Y'))
-            favorite_count = dict_data["quoted_status"]["favorite_count"]
-            share_count = dict_data["quoted_status"]["retweet_count"]
-            message = dict_data["quoted_status"]["text"]
         else:
             user_id = dict_data["user"]["id"]
             screen_name = dict_data["user"]["screen_name"]
@@ -185,11 +148,10 @@ class TweetStreamListener(StreamListener):
             friends_count = dict_data["user"]["friends_count"]
             statuses_count = dict_data["user"]["statuses_count"]
             date = time.strftime('%Y-%m-%dT%H:%M:%S', time.strptime(dict_data["created_at"],'%a %b %d %H:%M:%S +0000 %Y'))
-            favorite_count = dict_data["favorite_count"] #should be 0
-            share_count = dict_data["retweet_count"] #should be 0
-            message = dict_data["text"]
-        item_id = id_str
-        item_url = 'https://twitter.com/' + str(screen_name) + '/status/' + str(item_id)
+        item_url = 'https://twitter.com/' + str(screen_name) + '/status/' + str(id_str)
+
+        # temporary
+        TB = TextBlob(tweet)
 
         try:
             u = db_session.query(User).filter_by(uid=str(user_id)).one()
@@ -203,25 +165,26 @@ class TweetStreamListener(StreamListener):
             db_session.add(u)
             db_session.commit()
 
-        tw = Item(message=message,
-                contestant=contestant,
-                item_id=item_id,
+        tw = Item(message=tweet,
+                contestant=tweet_dict['contestant'],
+                item_id=id_str,
                 item_type=item_type,
                 item_url=item_url,
                 location=location,
                 date=date,
                 source="twitter",
-                polarity=emphasis(tweet), # nlp_textblob.py
-                subjectivity=tweet.sentiment.subjectivity,
-                sentiment=sentiment,
+                polarity=TB.sentiment.polarity, # tbc
+                subjectivity=TB.sentiment.subjectivity, # tbc
+                sentiment=tweet_dict['sentiment'],
                 favorite_count=favorite_count,
                 share_count=share_count,
                 user_id=u.id,
+                team=tweet_dict['team'],
                 data=json.dumps(data))
 
         try:
             # words
-            words = clean_words(tweet) # nlp_textblob.py
+            words = clean_words(TB) # nlp_textblob.py
             for w in words:
                 if len(w)>100:
                     continue
@@ -232,12 +195,11 @@ class TweetStreamListener(StreamListener):
                 u.words.append(w_obj)
 
             # hashtags
-            if dict_data["entities"]["hashtags"]:
-                tags = dict_data["entities"]["hashtags"]
-                for t in tags:
+            if tweet_dict['hashtags']:
+                for t in tweet_dict['hashtags']:
                     if len(t)>100:
                         continue
-                    t_obj = Hashtag(hashtag=t["text"])
+                    t_obj = Hashtag(hashtag=t)
                     db_session.add(t_obj)
                     db_session.commit()
                     tw.hashtags.append(t_obj)
@@ -255,18 +217,11 @@ class TweetStreamListener(StreamListener):
 
 
         # output key fields
-        item_url = 'https://twitter.com/' + str(screen_name) + '/status/' + str(item_id)
-        print (str(screen_name) + ' ' + str(sentiment) + ' ' + str(tweet.sentiment.polarity))
-        print ('Tweet ID: ' + str(item_id))
+        print (str(screen_name) + '   My score: ' + str(tweet_dict['sentiment']) + '   TB score: ' + str(TB.sentiment.polarity))
+        print ('Tweet ID: ' + str(id_str))
         print ('Friends Count: ' + str(friends_count) + '    Followers Count: ' + str(followers_count))
         print ('Retweet Count: ' + str(share_count) + '    Favorite Count: ' + str(favorite_count))
-        print (str(message))
-        item_tag = ""
-        if dict_data["entities"]["hashtags"]:
-            for t in dict_data["entities"]["hashtags"]:
-                item_tag = t["text"] + " " + item_tag
-            item_tag.strip()
-        print ('Tags: ' + item_tag)
+        print (str(tweet))
         print (item_url + '\n')
 
         return True

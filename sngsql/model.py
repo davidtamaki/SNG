@@ -37,6 +37,7 @@ class Item(Base):
     location = Column(String(100)) # only twitter
     date = Column(DateTime(timezone=False), nullable=False)
     source = Column(String(100), nullable=False)
+    team = Column(String(50)) # added 9/7/2015
 
     # sentiment info
     polarity = Column(Float, nullable=False)
