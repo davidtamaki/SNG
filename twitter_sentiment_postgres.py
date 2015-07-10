@@ -2,7 +2,7 @@ import json, time
 from tweepy.streaming import StreamListener
 from tweepy import OAuthHandler, Stream
 from textblob import TextBlob
-# from textblob.sentiments import NaiveBayesAnalyzer
+from textblob.sentiments import NaiveBayesAnalyzer
 from sngsql.database import Base, db_session, engine
 from sngsql.model import Hashtag, Item, User, Word, Url
 from nlp_textblob import *
@@ -91,21 +91,35 @@ class TweetStreamListener(StreamListener):
 
 
         # preprocess tweet in nlp_textblob
-        tweet_dict = analyse_tweet(tweet)
+        expanded_url = None
+        if dict_data["entities"]["urls"]:
+            expanded_url = str(dict_data["entities"]["urls"][0]["expanded_url"]).lower()
+        tweet_dict = analyse_tweet(tweet,expanded_url)
 
         # could not locate candidate, skip
         if tweet_dict['contestant'] is None:
             print ('CONTESTANT NOT FOUND' + '\n')
             return
 
+        #### temporary for comparison ####
+        TB = TextBlob(tweet)
+        if TB.sentiment.polarity < 0:
+            sentiment_textblob = "negative"
+        elif TB.sentiment.polarity == 0:
+            sentiment_textblob = "neutral"
+        else:
+            sentiment_textblob = "positive"
 
-        # TextBlob - determine if sentiment is positive, negative, or neutral
-        # if tweet.sentiment.polarity < 0:
-        #     sentiment = "negative"
-        # elif tweet.sentiment.polarity == 0:
-        #     sentiment = "neutral"
-        # else:
-        #     sentiment = "positive"
+        bayes = TextBlob(tweet, analyzer=NaiveBayesAnalyzer())
+        if abs(bayes.sentiment.p_pos-bayes.sentiment.p_neg) < .2:
+            sentiment_bayes = "neutral"
+        elif bayes.sentiment.classification == 'neg':
+            sentiment_bayes = "negative"
+        elif bayes.sentiment.classification == 'pos':
+            sentiment_bayes = "positive"
+        else:
+            sentiment_bayes = 'Uhoh'
+        #################################
 
         # select correct fields
         if "media" not in dict_data["entities"]:
@@ -150,8 +164,14 @@ class TweetStreamListener(StreamListener):
             date = time.strftime('%Y-%m-%dT%H:%M:%S', time.strptime(dict_data["created_at"],'%a %b %d %H:%M:%S +0000 %Y'))
         item_url = 'https://twitter.com/' + str(screen_name) + '/status/' + str(id_str)
 
-        # temporary
-        TB = TextBlob(tweet)
+
+        # check tweet is from verified candidate twitter account
+        if str(user_id) in CANDIDATE_USERNAMES[tweet_dict['contestant']]['UserName']:
+            print ('VERIFIED USER')
+            verified = True
+        else:
+            verified = False
+
 
         try:
             u = db_session.query(User).filter_by(uid=str(user_id)).one()
@@ -173,12 +193,15 @@ class TweetStreamListener(StreamListener):
                 location=location,
                 date=date,
                 source="twitter",
+                sentiment=tweet_dict['sentiment'],
+                sentiment_textblob=sentiment_textblob,
+                sentiment_bayes=sentiment_bayes,
                 polarity=TB.sentiment.polarity, # tbc
                 subjectivity=TB.sentiment.subjectivity, # tbc
-                sentiment=tweet_dict['sentiment'],
                 favorite_count=favorite_count,
                 share_count=share_count,
                 user_id=u.id,
+                verified_user=verified,
                 team=tweet_dict['team'],
                 data=json.dumps(data))
 
@@ -217,7 +240,7 @@ class TweetStreamListener(StreamListener):
 
 
         # output key fields
-        print (str(screen_name) + '   My score: ' + str(tweet_dict['sentiment']) + '   TB score: ' + str(TB.sentiment.polarity))
+        print (str(screen_name) + '   My score: ' + str(tweet_dict['sentiment']) + '   TB score: ' + sentiment_textblob  + '   Bayes score: ' + sentiment_bayes)
         print ('Tweet ID: ' + str(id_str))
         print ('Friends Count: ' + str(friends_count) + '    Followers Count: ' + str(followers_count))
         print ('Retweet Count: ' + str(share_count) + '    Favorite Count: ' + str(favorite_count))

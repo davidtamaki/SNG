@@ -51,13 +51,13 @@ order by count(message) desc
 
 
 # show all users with more than 1 post
-SELECT user_id, screen_name,
+SELECT user_id, screen_name, followers_count,
 	COUNT(user_id) AS user_count 
 FROM item JOIN "user" ON item.user_id = "user".id
-GROUP BY user_id, screen_name
+GROUP BY user_id, screen_name, followers_count
 HAVING COUNT(user_id) > 1
-ORDER BY user_count DESC
-ORDER BY user_count DESC
+ORDER BY followers_count DESC
+
 
 # connect user and hashtag
 select screen_name,hashtag

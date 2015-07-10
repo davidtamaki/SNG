@@ -18,20 +18,71 @@ DEMOCRAT = ["p2", "uniteblue", "stoprush"]
 REPUBLICAN = ["teaparty", "tcot", "pjnet", "gop","wakeupamerica", "ccot", "tlot", "rednationrising"]
 
 
-christie_neg = ["TellingItLikeItIs"]
+NEWSPAPER = ['ABC', 'ABSCBNNews', 'AP', 'ariannahuff', 'BET', 'billboard', 'BreakingNews', 'businessinsider', 'CBCNews', 'CBSNews', 'CNBC', 'CNET', 'CNN', 'cnnbrk', 'CNNMoney', 'Cosmopolitan', 'cspan', 'Drrake', 'DRUDGE_REPORT', 'ELLEmagazine', 'ENews', 'eonline', 'ESPNDeportes', 'EW', 'Forbes', 'FortuneMagazine', 'FoxNews', 'FT', 'glamourmag', 'GMA', 'GStephanopoulos', 'guardian', 'HuffingtonPost', 'Inc', 'Independent', 'inthefade', 'latimes', 'MarketWatch', 'mashable', 'NBCNews', 'ndtv', 'Newsweek', 'NewYorker', 'NYMag', 'nypost', 'nytimes', 'nytimesphoto', 'nytimesworld', 'people', 'pitchfork', 'politico', 'Reuters', 'RollingStone', 'RubyRose', 'seventeen', 'Slate', 'Telegraph', 'TheAtlantic', 'thedailybeast', 'TheEconomist', 'TIME', 'TimesNow', 'timesofindia', 'TMZ', 'totalfratmove', 'TVGuide', 'USATODAY', 'usweekly', 'VanityFair', 'Variety', 'VICE', 'washingtonpost', 'WSJ', 'YahooNews', 'YourAnonNews']
+POLITICAL_COMMENTARY = ['BuzzFeed', 'Cheezburger', 'cher', 'EvaLongoria', 'funnyordie', 'FunnyPicsDepot', 'GavinNewsom', 'georgelopez', 'JohnCleese', 'katedelcastillo', 'MarkRuffalo', 'PerezHilton', 'RayWJ', 'rustyrockets', 'scarletmonahan', 'SpeakerBoehner', 'SteveStfler', 'TheDailyShow', 'TheTweetOfGod', 'Tyrese', 'UberFacts', 'WakaFlocka']
 
-cruz_pos = ["Cruz2016",  "CruzCrew", "TedCruz2016"]
 
-hilary_neg = ["Benghazi", "Clinton", "Hillary"]
-hilary_pos = ["Hillary2016", "HillaryClinton"]
+# dictionaries for candidates, parties, usernames, and hashtags with sentiment
+CANDIDATE_USERNAMES = ({'Bobby Jindal': {'Party': 'Republican', 'UserName': 'BobbyJindal'},
+		'Chris Christie': {'Party': 'Republican', 'UserName': 'ChrisChristie'},
+		'Donald Trump': {'Party': 'Republican', 'UserName': 'realDonaldTrump'},
+		'Jeb Bush': {'Party': 'Republican', 'UserName': 'JebBush'},
+		'Rick Perry': {'Party': 'Republican', 'UserName': ['GovernorPerry', 'TeamRickPerry']},
+		'Lindsey Graham': {'Party': 'Republican', 'UserName': ['GrahamBlog', 'LindseyGrahamSC']},
+		'George Pataki': {'Party': 'Republican', 'UserName': 'GovernorPataki'},
+		'Rick Santorum': {'Party': 'Republican', 'UserName': 'RickSantorum'},
+		'Mike Huckabee': {'Party': 'Republican', 'UserName': 'GovMikeHuckabee'},
+		'Ben Carson': {'Party': 'Republican', 'UserName': 'RealBenCarson'},
+		'Carly Fiorina': {'Party': 'Republican', 'UserName': 'CarlyFiorina'},
+		'Marco Rubio': {'Party': 'Republican', 'UserName': 'marcorubio'},
+		'Rand Paul': {'Party': 'Republican', 'UserName': 'RandPaul'},
+		'Ted Cruz': {'Party': 'Republican', 'UserName': 'tedcruz'},
+		'Scott Walker': {'Party': 'Republican', 'UserName': 'ScottWalker'},
+		'John Kasich': {'Party': 'Republican', 'UserName': 'JohnKasich'},
+		'Hillary Clinton': {'Party': 'Democrat', 'UserName': 'HillaryClinton'},
+		'Jim Webb': {'Party': 'Democrat', 'UserName': 'JimWebbUSA'},
+		'Lincoln Chafee': {'Party': 'Democrat', 'UserName': 'LincolnChafee'},
+		'Martin OMalley': {'Party': 'Democrat', 'UserName': 'MartinOMalley'},
+		'Bernie Sanders': {'Party': 'Democrat', 'UserName': 'SenSanders'}})
 
-jindal_neg = ["AskBobby"]
+CANDIDATE_HASHTAGS = ({'christie2016': {'Name': 'Chris Christie', 'Sentiment': 'positive'},
+		'tellingitlikeitis': {'Name': 'Chris Christie', 'Sentiment': 'negative'},
+		'jindal2016': {'Name': 'Bobby Jindal', 'Sentiment': 'positive'},
+		'askbobby': {'Name': 'Bobby Jindal', 'Sentiment': 'negative'},
+		'donaldtrump': {'Name': 'Donald Trump', 'Sentiment': 'negative'},
+		'dumptrump': {'Name': 'Donald Trump', 'Sentiment': 'negative'},
+		'trump': {'Name': 'Donald Trump', 'Sentiment': 'negative'},
+		'fucktrump': {'Name': 'Donald Trump', 'Sentiment': 'negative'},
+		'trump2016': {'Name': 'Donald Trump', 'Sentiment': 'positive'},
+		'jeb2016': {'Name': 'Jeb Bush', 'Sentiment': 'positive'},
+		'allinforjeb': {'Name': 'Jeb Bush', 'Sentiment': 'positive'},
+		'jebnofilter': {'Name': 'Jeb Bush', 'Sentiment': 'positive'},
+		'perry2016': {'Name': 'Rick Perry', 'Sentiment': 'positive'},
+		'graham2016': {'Name': 'Lindsey Graham', 'Sentiment': 'positive'}, 
+		'pataki2016': {'Name': 'George Pataki', 'Sentiment': 'positive'}, 
+		'rick2016': {'Name': 'Rick Santorum', 'Sentiment': 'positive'},
+		'santorum2016': {'Name': 'Rick Santorum', 'Sentiment': 'positive'},
+		'imwithhuck': {'Name': 'Mike Huckabee', 'Sentiment': 'positive'},
+		'imwithmike': {'Name': 'Mike Huckabee', 'Sentiment': 'positive'},
+		'huckabee2016': {'Name': 'Mike Huckabee', 'Sentiment': 'positive'},
+		'bc2dc16': {'Name': 'Ben Carson', 'Sentiment': 'positive'},
+		'carson2016': {'Name': 'Ben Carson', 'Sentiment': 'positive'},
+		'carly2016': {'Name': 'Carly Fiorina', 'Sentiment': 'positive'},
+		'newamericancentury': {'Name': 'Marco Rubio', 'Sentiment': 'positive'},
+		'rubio2016': {'Name': 'Marco Rubio', 'Sentiment': 'positive'},
+		'standwithrand': {'Name': 'Rand Paul', 'Sentiment': 'positive'},
+		'atimefortruth': {'Name': 'Ted Cruz', 'Sentiment': 'positive'},
+		'cruz2016': {'Name': 'Ted Cruz', 'Sentiment': 'positive'},
+		'cruzcrew': {'Name': 'Ted Cruz', 'Sentiment': 'positive'},
+		'tedcruz2016': {'Name': 'Ted Cruz', 'Sentiment': 'positive'},
+		'walker2016': {'Name': 'Scott Walker', 'Sentiment': 'positive'},
+		'kasich4us': {'Name': 'John Kasich', 'Sentiment': 'positive'},
+		'hillary2016': {'Name': 'Hillary Clinton', 'Sentiment': 'positive'},
+		'benghazi': {'Name': 'Hillary Clinton', 'Sentiment': 'negative'},
+		'webb2016': {'Name': 'Jim Webb', 'Sentiment': 'positive'},
+		'jimwebb2016': {'Name': 'Jim Webb', 'Sentiment': 'positive'},
+		'chafee2016': {'Name': 'Lincoln Chafee', 'Sentiment': 'positive'},
+		'omalley2016': {'Name': 'Martin OMalley', 'Sentiment': 'positive'},
+		'bernie2016': {'Name': 'Bernie Sanders', 'Sentiment': 'positive'},
+		'feelthebern': {'Name': 'Bernie Sanders', 'Sentiment': 'positive'}})
 
-perry_pos = ["Perry2016"]
-
-sanders_pos = ["Bernie2016", "FeelTheBern"]
-
-reump_pos = ["Trump2016"]
-trump_neg = ["DonaldTrump", "DumpTrump", "Trump"]
-
-walker_neg = ["wiunion"]

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, DateTime, Float, BigInteger, Integer, String, Table, Text
+from sqlalchemy import Column, ForeignKey, DateTime, Float, BigInteger, Integer, String, Table, Text, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sngsql.database import Base
@@ -37,7 +37,11 @@ class Item(Base):
     location = Column(String(100)) # only twitter
     date = Column(DateTime(timezone=False), nullable=False)
     source = Column(String(100), nullable=False)
+
     team = Column(String(50)) # added 9/7/2015
+    sentiment_bayes = Column(String(100)) # added 10/7/2015
+    sentiment_textblob = Column(String(100)) # added 10/7/2015
+    verified_user = Column(Boolean, default=False) # added 10/7/2015
 
     # sentiment info
     polarity = Column(Float, nullable=False)

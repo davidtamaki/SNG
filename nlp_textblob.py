@@ -61,49 +61,49 @@ def clean_words(TB):
 
 
 # clean tweet before applying sentiment analysis
-# input dirty string, output clean TextBlob object
-def analyse_tweet(tweetstring):
+# input dirty string, output dictionary for (sentiment, team, hashtags, urls, and contestant)
+def analyse_tweet(tweetstring,expanded_url):
+    print ('expanded_urls: ' + str(expanded_url))
+
+    # remove tinyurl from tweetstring
     urls = re.findall('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', tweetstring)
     for u in urls:
         tweetstring = tweetstring.replace(u,'')
 
-
     # hashtag analysis
     hashtags = []
-    team = 'Unknown'
     for word in tweetstring.split():
         if word[0] == '#':
             hashtags.append(word[1:].lower())
     print ('hashtags: ' + str(hashtags))
     if hashtags:
         for h in hashtags:
-            if h in DEMOCRAT:
-                print ('democrat tag: ' + h)
-                team = 'Democrat'
-                break
-            elif h in REPUBLICAN:
-                print ('republican tag ' + h)
-                team = 'Republican'
-                break
-
-    # if hashtag is xyz2016, set instant sentiment and return
+             # if hashtag is xyz2016, set instant sentiment and return
+            if h.lower() in CANDIDATE_HASHTAGS:
+                contestant = CANDIDATE_HASHTAGS[h]['Name']
+                sentiment = CANDIDATE_HASHTAGS[h]['Sentiment']
+                team = CANDIDATE_USERNAMES[contestant]['Party']
+                print ('Candidate Hashtag identified: ' + str(h))
+                print (contestant)
+                return ({'sentiment':sentiment, 'team':team, 
+                    'hashtags':hashtags, 'urls':urls, 'contestant':contestant })
     
     TB = TextBlob(tweetstring)
 
     # tag contestant
     contestant = None
-    for x in SEARCH_TERM:       
-        if all (n.lower() in TB.words.lower() for n in x.split()):
+    for x in SEARCH_TERM:
+        if all (n.lower() in TB.words.singularize().lower() for n in x.split()):
             print (x)
             contestant = str(x)
             break
-    # if contestant is None:
-    #     print ('searching url...')
-    #     for x in SEARCH_TERM:
-    #         if all (n.lower() in str(dict_data["entities"]["urls"][0]["expanded_url"]).lower() for n in x.split()):
-    #             print (x)
-    #             contestant = str(x)
-    #             break
+    if contestant is None and expanded_url is not None:
+        print ('searching url...')
+        for x in SEARCH_TERM:
+            if all (n.lower() in expanded_url for n in x.split()):
+                print (x)
+                contestant = str(x)
+                break
     if contestant is None:
         print ('searching any match...')
         for x in SEARCH_TERM:       
@@ -111,9 +111,13 @@ def analyse_tweet(tweetstring):
                 print (x)
                 contestant = str(x)
                 break
+    if contestant is None:
+        return ({'contestant': None})
 
     # need to compare multiple candidates in message
+
     # set team to candidate's party
+    team = CANDIDATE_USERNAMES[contestant]['Party']
 
     # sentiment analysis
     p, n = 0, 0
@@ -157,15 +161,13 @@ def analyse_tweet(tweetstring):
     return ({'sentiment':sentiment, 'team':team,
         'hashtags':hashtags, 'urls':urls, 'contestant':contestant })
 
-# should return sentiment, team, hashtags, urls, contestant(s)
-# add emoticon and emoji search
 
 
 def binarySearch(alist, item):
     first = 0
     last = len(alist)-1
     found = False
-    
+
     while first<=last and not found:
         midpoint = (first + last)//2
         if alist[midpoint] == item:

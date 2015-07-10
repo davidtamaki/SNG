@@ -31,8 +31,7 @@
                 Polarity: {{item.polarity}}  
                 Subjectivity: {{item.subjectivity}}  
                 Favourites: {{item.favorite_count}}  
-                Friends: {{item.friends_count}}  
-                Followers:  {{item.followers_count}}
+                Shared: {{item.share_count}}  
                 {% if item.source == "twitter" %}
                   {{oembed_tweet(item.item_id)}}
                 {% else %}
@@ -51,8 +50,7 @@
                 Polarity: {{item.polarity}}  
                 Subjectivity: {{item.subjectivity}}  
                 Favourites: {{item.favorite_count}}  
-                Friends: {{item.friends_count}}  
-                Followers:  {{item.followers_count}}
+                Shared: {{item.share_count}}
                 {% if item.source == "twitter" %}
                   {{oembed_tweet(item.item_id)}}
                 {% else %}

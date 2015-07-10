@@ -36,14 +36,14 @@ def static_proxy(path):
 
 @app.route('/')
 def root():
-	l = db_session.query(Item).filter(Item.sentiment == 'positive').order_by(Item.share_count).all()
+	l = db_session.query(Item).filter(Item.sentiment == 'positive').order_by(Item.share_count.desc()).all()
 	response_left = l[0:10]
 	print('Total %d hits found.' % len(l))
 	for h in response_left:
 		h.polarity = round(h.polarity,2)
 		h.subjectivity = round(h.subjectivity,2)
 
-	r = db_session.query(Item).filter(Item.sentiment == 'negative').order_by(Item.share_count).all()
+	r = db_session.query(Item).filter(Item.sentiment == 'negative').order_by(Item.share_count.desc()).all()
 	response_right = r[0:10]
 	print('Total %d hits found.' % len(r))
 	for h in response_right:
@@ -56,7 +56,7 @@ def root():
 #source type (e.g. twitter or instagram)
 @app.route('/source/<s>/item/<int:p>/', methods=['GET'])
 def get_source(s,p):
-	results = db_session.query(Item).filter(Item.source == s).order_by(Item.share_count).all()
+	results = db_session.query(Item).filter(Item.source == s).order_by(Item.share_count.desc()).all()
 	response_left = results[10*(p-1):10*p]
 	print('Total %d hits found.' % len(results))
 	for h in response_left:
@@ -73,7 +73,7 @@ def get_source(s,p):
 def get_candidate(c,p):
 	results = (db_session.query(Item).filter(and_(
 		Item.contestant.like('%'+c.title()+'%'),Item.sentiment=='positive')).
-		order_by(Item.share_count).all())
+		order_by(Item.share_count.desc()).all())
 	response_left = results[10*(p-1):10*p]
 	print('Total %d hits found.' % len(results))
 	for h in response_left:
@@ -90,7 +90,7 @@ def get_candidate(c,p):
 @app.route('/test/')
 def test():
 	return render_template('d3_test.html')
-	
+
 
 if __name__ == '__main__':
 	app.run(debug=True)
