@@ -4,8 +4,9 @@
     <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css"/>
     <link rel="stylesheet" href="{{url_for('static', filename='jquery.embed.css') }}"/>
     <link rel="stylesheet" href="{{url_for('static', filename='jquery.oembed.css') }}"/>
+    <link rel="stylesheet" href="{{url_for('static', filename='c3.min.css') }}"/>
 
-    <script>
+    <script>          
       function init() {
         $("a.embed").oembed();
       }
@@ -19,7 +20,12 @@
       <div class="header">
         <h3 class="text-muted">Social News Generator: Trending Thoughts</h3>
       </div>
-      <hr/>
+
+      <div id="chart_timeseries"></div>
+      <p></p>
+
+      <div id="chart_bar"></div>
+      <p></p>
 
       <div style="width: 100%;">
 
@@ -28,8 +34,6 @@
           <ul>
           {% for item in jsondata_left %}
             <li>Sentiment: {{item.sentiment}} 
-                Polarity: {{item.polarity}}  
-                Subjectivity: {{item.subjectivity}}  
                 Favourites: {{item.favorite_count}}  
                 Shared: {{item.share_count}}  
                 {% if item.source == "twitter" %}
@@ -90,10 +94,55 @@
     <script type=text/javascript src="{{url_for('static', filename='jquery.embed.js') }}"></script>
     <script type=text/javascript src="{{url_for('static', filename='jquery.oembed.js') }}"></script>
 
+    <!-- Load d3.js and c3.js -->
+    <script type=text/javascript src="{{url_for('static', filename='d3.min.js') }}" charset="utf-8"></script>
+    <script type=text/javascript src="{{url_for('static', filename='c3.min.js') }}"></script>
 
     <!-- FOR JQUERY, UNDERSCORE, BACKBONE -->
     <script src="http://documentcloud.github.com/underscore/underscore-min.js"></script>
     <script src="http://documentcloud.github.com/backbone/backbone-min.js"></script>
+
+    <script>
+      var chart_ts = c3.generate({
+        bindto: '#chart_timeseries',
+        data: {{timeseries_data|safe}},
+        axis: {
+          x: {
+              label: 'Date',
+              type: 'timeseries',
+              tick: {
+                    fit: true,
+                    format: '%Y-%m-%d'
+              }
+          },
+          y: {
+              label: 'No. of Retweets'
+          }
+        }
+      });
+
+      var chart_bar = c3.generate({
+        bindto: '#chart_bar',
+        data: {{bar_data|safe}},
+        axis: {
+          x: {
+              type: 'category',
+              categories: {{bar_categories|safe}}
+          },
+          y: {
+              min: 0,
+              max: 100,
+              padding: {top:0, bottom:0},
+              label: '% of Retweets'
+          }
+        }
+        // colors: {
+        //   positive: '#1f77b4',
+        //   neutral: '#1f77b4',
+        //   negative: '#ff7f0e'
+        // }
+      });
+    </script>
 
   </body>
 </html>

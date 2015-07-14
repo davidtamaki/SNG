@@ -4,5 +4,4 @@
 .DS_Store
 config.py
 archive/
-es_index_output.txt
-pg_index_output.txt
+tests/

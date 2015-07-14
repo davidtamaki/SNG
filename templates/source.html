@@ -18,7 +18,6 @@
       <div class="header">
         <h3 class="text-muted">Social News Generator: Trending Thoughts</h3>
       </div>
-      <hr/>
 
 
     {{ pagination.info }}
@@ -28,8 +27,6 @@
       <ul>
       {% for item in jsondata_left %}
         <li>Sentiment: {{item.sentiment}} 
-            Polarity: {{item.polarity}}  
-            Subjectivity: {{item.subjectivity}}  
             Favourites: {{item.favorite_count}}  
             Shared: {{item.share_count}}
             {% if item.source == "twitter" %}

@@ -1,4 +1,4 @@
-import json, time
+import json, time, re
 from tweepy.streaming import StreamListener
 from tweepy import OAuthHandler, Stream
 from textblob import TextBlob
@@ -10,6 +10,21 @@ from sqlalchemy.sql import exists, update
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 from config import *
+
+
+def twitter_crawl():
+    # create instance of the tweepy tweet stream listener
+    listener = TweetStreamListener()
+
+    # set twitter keys/tokens
+    auth = OAuthHandler(consumer_key, consumer_secret)
+    auth.set_access_token(twitter_access_token, access_token_secret)
+
+    # create instance of the tweepy stream
+    stream = Stream(auth, listener)
+
+    # search twitter for keywords
+    stream.filter(languages=['en'], track=SEARCH_TERM)
 
 
 class TweetStreamListener(StreamListener):
@@ -101,8 +116,13 @@ class TweetStreamListener(StreamListener):
             print ('CONTESTANT NOT FOUND' + '\n')
             return
 
-        #### temporary for comparison ####
-        TB = TextBlob(tweet)
+        ####### temporary for comparison #######
+        tweet_trim = tweet
+        urls = re.findall('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', tweet_trim)
+        for u in urls:
+            tweet_trim = tweet_trim.replace(u,'')
+        TB = TextBlob(tweet_trim)
+
         if TB.sentiment.polarity < 0:
             sentiment_textblob = "negative"
         elif TB.sentiment.polarity == 0:
@@ -110,16 +130,16 @@ class TweetStreamListener(StreamListener):
         else:
             sentiment_textblob = "positive"
 
-        bayes = TextBlob(tweet, analyzer=NaiveBayesAnalyzer())
-        if abs(bayes.sentiment.p_pos-bayes.sentiment.p_neg) < .2:
-            sentiment_bayes = "neutral"
-        elif bayes.sentiment.classification == 'neg':
-            sentiment_bayes = "negative"
-        elif bayes.sentiment.classification == 'pos':
-            sentiment_bayes = "positive"
-        else:
-            sentiment_bayes = 'Uhoh'
-        #################################
+        # bayes = TextBlob(tweet_trim, analyzer=NaiveBayesAnalyzer())
+        # if abs(bayes.sentiment.p_pos-bayes.sentiment.p_neg) < .2:
+        #     sentiment_bayes = "neutral"
+        # elif bayes.sentiment.classification == 'neg':
+        #     sentiment_bayes = "negative"
+        # elif bayes.sentiment.classification == 'pos':
+        #     sentiment_bayes = "positive"
+        # else:
+        #     sentiment_bayes = 'Uhoh'
+        ####################################
 
         # select correct fields
         if "media" not in dict_data["entities"]:
@@ -195,7 +215,7 @@ class TweetStreamListener(StreamListener):
                 source="twitter",
                 sentiment=tweet_dict['sentiment'],
                 sentiment_textblob=sentiment_textblob,
-                sentiment_bayes=sentiment_bayes,
+                # sentiment_bayes=sentiment_bayes,
                 polarity=TB.sentiment.polarity, # tbc
                 subjectivity=TB.sentiment.subjectivity, # tbc
                 favorite_count=favorite_count,
@@ -240,7 +260,7 @@ class TweetStreamListener(StreamListener):
 
 
         # output key fields
-        print (str(screen_name) + '   My score: ' + str(tweet_dict['sentiment']) + '   TB score: ' + sentiment_textblob  + '   Bayes score: ' + sentiment_bayes)
+        print (str(screen_name) + '   My score: ' + str(tweet_dict['sentiment']) + '   TB score: ' + sentiment_textblob ) # + '   Bayes score: ' + sentiment_bayes)
         print ('Tweet ID: ' + str(id_str))
         print ('Friends Count: ' + str(friends_count) + '    Followers Count: ' + str(followers_count))
         print ('Retweet Count: ' + str(share_count) + '    Favorite Count: ' + str(favorite_count))
@@ -255,17 +275,14 @@ class TweetStreamListener(StreamListener):
         print (str(status) + ' error with connection')
 
 if __name__ == '__main__':
+    while 1:
+        try:
+            twitter_crawl()
+        except:
+            print ('protocol error. sleeping 5 seconds... zzz...')
+            time.sleep(5)
+            continue
 
-    # create instance of the tweepy tweet stream listener
-    listener = TweetStreamListener()
 
-    # set twitter keys/tokens
-    auth = OAuthHandler(consumer_key, consumer_secret)
-    auth.set_access_token(twitter_access_token, access_token_secret)
 
-    # create instance of the tweepy stream
-    stream = Stream(auth, listener)
-
-    # search twitter for keywords
-    stream.filter(languages=['en'], track=SEARCH_TERM)
 

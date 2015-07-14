@@ -79,7 +79,7 @@ def analyse_tweet(tweetstring,expanded_url):
     if hashtags:
         for h in hashtags:
              # if hashtag is xyz2016, set instant sentiment and return
-            if h.lower() in CANDIDATE_HASHTAGS:
+            if h in CANDIDATE_HASHTAGS:
                 contestant = CANDIDATE_HASHTAGS[h]['Name']
                 sentiment = CANDIDATE_HASHTAGS[h]['Sentiment']
                 team = CANDIDATE_USERNAMES[contestant]['Party']
@@ -178,6 +178,8 @@ def binarySearch(alist, item):
             else:
                 first = midpoint+1
     return found
+
+
 
 
 

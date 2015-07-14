@@ -31,14 +31,28 @@ where hashtag = 'Clinton'
 
 
 # average sentiment scores of contestants
-select contestant, round(cast(avg(polarity) as numeric),2), count(polarity) as total,
-	count(case when sentiment ='negative' then sentiment else null end) as negative,
-	count(case when sentiment ='neutral' then sentiment else null end) as neutral,
-	count(case when sentiment ='positive' then sentiment else null end) as positive,
-	sum(share_count) as total_retweet_count
+SELECT contestant, ROUND(CAST(AVG(polarity) AS NUMERIC),2) AS avg_sentiment,
+	SUM(CASE WHEN sentiment ='negative' THEN share_count ELSE NULL END) AS negative,
+	SUM(CASE WHEN sentiment ='neutral' THEN share_count ELSE NULL END) AS neutral,
+	SUM(CASE WHEN sentiment ='positive' THEN share_count ELSE NULL END) AS positive,
+	SUM(share_count) AS total_retweet_count
+FROM item
+GROUP BY contestant
+HAVING SUM(share_count) > 5000
+ORDER BY SUM(share_count) DESC
+
+
+# basic time series plot of retweet count
+select contestant,
+	sum(case when date::date = current_date then share_count else null end) as today,
+	sum(case when date::date = current_date-1 then share_count else null end) as yesterday,
+	sum(case when date::date = current_date-2 then share_count else null end) as twodaysago,
+	sum(case when date::date = current_date-3 then share_count else null end) as threedaysago,
+	sum(case when date::date = current_date-4 then share_count else null end) as fourdaysago,
+	sum(share_count) as total
 from item
 group by contestant
-order by sum(share_count) desc
+having sum(share_count)>10000
 
 
 # important users with counts and no of posts
@@ -114,7 +128,19 @@ select item_id, message, sentiment, polarity
 from item
 where message similar to '%\?%'
 
-#u update fav / share count
+# select items by date
+select * from item
+WHERE date::date = '2015-07-13'
+WHERE date::date = current_date-1
+
+
+# update fav / share count
 UPDATE item SET favorite_count = '2000', share_count = '1800' WHERE item_id= '617592269621694464';
 UPDATE item SET favorite_count = '2000', share_count = '1800' WHERE item_id= '617527052086976512';
+
+# remove data with foreign key constraints
+DELETE FROM item_word WHERE item_id IN (SELECT id FROM item where contestant similar to '%[\U0001F44D-\U0001F6FF]%');
+DELETE FROM item_hashtag WHERE item_id IN (SELECT id FROM item where contestant similar to '%[\U0001F44D-\U0001F6FF]%');
+DELETE FROM item WHERE contestant similar to '%[\U0001F44D-\U0001F6FF]%';
+
 

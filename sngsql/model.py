@@ -88,7 +88,7 @@ class Hashtag(Base):
     id = Column(Integer, primary_key=True)
     hashtag = Column(String(200), nullable=False)
 
-    def __repr(self):
+    def __repr__(self):
         return '<Hashtag {}>'.format(self.hashtag)
 
 
@@ -106,7 +106,7 @@ class Url(Base):
     id = Column(Integer, primary_key=True)
     url = Column(String(200), nullable=False)
 
-    def __repr(self):
+    def __repr__(self):
         return '<URL {}>'.format(self.url)
 
 
@@ -123,4 +123,17 @@ class Follower(Base):
     def __repr__(self):
         return 'Follower(parent=%s, child=%s)' % (self.parent_id, self.child_id)
 
+
+
+# growth of tweets
+class Retweet_growth(Base):
+    __tablename__ = 'retweet_growth'
+    id = Column(Integer, primary_key=True)
+    item_id = Column(String(100), ForeignKey('item.item_id'), nullable=False, unique=True)
+    date_time = Column(DateTime(timezone=False), nullable=False)
+    elapsed_time = Column(Float, nullable=False)
+    share_count = Column(BigInteger)
+
+    def __repr__(self):
+        return '<Retweet_growth {}>'.format(self.id)
 
