@@ -130,6 +130,7 @@ class Retweet_growth(Base):
     __tablename__ = 'retweet_growth'
     id = Column(Integer, primary_key=True)
     item_id = Column(String(100), ForeignKey('item.item_id'), nullable=False, unique=True)
+    creation_date = Column(DateTime(timezone=False), nullable=False)
     date_time = Column(DateTime(timezone=False), nullable=False)
     elapsed_time = Column(Float, nullable=False)
     share_count = Column(BigInteger)

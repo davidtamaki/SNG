@@ -179,6 +179,10 @@ def binarySearch(alist, item):
                 first = midpoint+1
     return found
 
+#converts time delta to minutes
+def td_to_minutes(td):
+    return (td.days*1440)+(td.seconds//60)
+
 
 
 

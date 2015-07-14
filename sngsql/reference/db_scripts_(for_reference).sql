@@ -133,6 +133,16 @@ select * from item
 WHERE date::date = '2015-07-13'
 WHERE date::date = current_date-1
 
+# show retweet growth for tweets
+SELECT item_id, creation_date, date_time, elapsed_time, share_count
+FROM retweet_growth
+WHERE item_id IN 
+	(SELECT item_id
+	FROM retweet_growth
+	GROUP BY item_id
+	HAVING count(item_id)>1)
+ORDER BY item_id, date_time
+
 
 # update fav / share count
 UPDATE item SET favorite_count = '2000', share_count = '1800' WHERE item_id= '617592269621694464';

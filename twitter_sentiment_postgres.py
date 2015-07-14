@@ -1,10 +1,10 @@
-import json, time, re
+import json, time, re, datetime
 from tweepy.streaming import StreamListener
 from tweepy import OAuthHandler, Stream
 from textblob import TextBlob
 from textblob.sentiments import NaiveBayesAnalyzer
 from sngsql.database import Base, db_session, engine
-from sngsql.model import Hashtag, Item, User, Word, Url
+from sngsql.model import Hashtag, Item, User, Word, Url, Retweet_growth
 from nlp_textblob import *
 from sqlalchemy.sql import exists, update
 from sqlalchemy.exc import OperationalError
@@ -84,18 +84,34 @@ class TweetStreamListener(StreamListener):
             favorite_count = dict_data["favorite_count"] # should be 0
             share_count = dict_data["retweet_count"] # should be 0
 
+        now = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
 
         ### Testing time to index postgres ###
         # t = time.process_time() # T start
 
         (ret, ), = db_session.query(exists().where(Item.item_id==str(id_str)))
         if ret: 
-            # Item already exists. Update share_count & favorite_count
+            # Item already exists. Update share_count, favorite_count, and add retweet growth
             record = db_session.query(Item).filter(Item.item_id==id_str).one()
             record.favorite_count=favorite_count
             record.share_count=share_count
             db_session.flush()
-            print ('Retweet caught. Updated favorite & share count. ID: ' + str(id_str) + '\n')
+
+            timedelta = datetime.datetime.utcnow()-datetime.datetime.strptime(str(record.date),'%Y-%m-%d %H:%M:%S')
+            minutes_elapsed = td_to_minutes(timedelta)
+
+            try:
+                rt = Retweet_growth(item_id=id_str,
+                    date_time=now,
+                    creation_date=record.date,
+                    elapsed_time=minutes_elapsed,
+                    share_count=share_count)
+                db_session.add(rt)
+                db_session.commit()
+            except OperationalError:
+                db_session.rollback()
+
+            print ('Retweet caught. Updated favorite, share count, and Retweet growth. ID: ' + str(id_str) + '\n')
             return
 
         # elapsed_time = time.process_time() - t # T end
@@ -192,6 +208,10 @@ class TweetStreamListener(StreamListener):
         else:
             verified = False
 
+        # for retweet growth
+        timedelta = datetime.datetime.utcnow()-datetime.datetime.strptime(date,'%Y-%m-%dT%H:%M:%S')
+        minutes_elapsed = td_to_minutes(timedelta)
+        # print (str(minutes_elapsed))
 
         try:
             u = db_session.query(User).filter_by(uid=str(user_id)).one()
@@ -211,7 +231,7 @@ class TweetStreamListener(StreamListener):
                 item_type=item_type,
                 item_url=item_url,
                 location=location,
-                date=date,
+                date=date, # all time is stored at UTC
                 source="twitter",
                 sentiment=tweet_dict['sentiment'],
                 sentiment_textblob=sentiment_textblob,
@@ -250,9 +270,18 @@ class TweetStreamListener(StreamListener):
 
             # to add... URL table!!
 
+            # retweet growth
+            rt = Retweet_growth(item_id=id_str,
+                date_time=now,
+                creation_date=date,
+                elapsed_time=minutes_elapsed,
+                share_count=share_count)
+
             db_session.add(u)
             db_session.commit()
             db_session.add(tw)
+            db_session.commit()
+            db_session.add(rt)
             db_session.commit()
 
         except OperationalError:
