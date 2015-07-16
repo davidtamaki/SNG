@@ -113,35 +113,57 @@ join item on item.user_id="user".id
 group by screen_name,word
 having count(item_id)>5
 
+
 #find smily faces :)
 select *
 from item
 where message similar to '%:\)%'
+
 
 # unicode faces range
 select *
 from item
 where message similar to '%[\U0001F600-\U0001F6FF]%'
 
+
 # messages with questions
 select item_id, message, sentiment, polarity
 from item
 where message similar to '%\?%'
+
 
 # select items by date
 select * from item
 WHERE date::date = '2015-07-13'
 WHERE date::date = current_date-1
 
-# show retweet growth for tweets
-SELECT item_id, creation_date, date_time, elapsed_time, share_count
-FROM retweet_growth
-WHERE item_id IN 
+
+# items with both Clinton and Trump (comparative sentences)
+select contestant, item_id, message, sentiment, polarity, date
+from item
+group by contestant, item_id, message, sentiment, polarity, date
+having message like ('%Clinton%')
+and message like ('%Trump%')
+and message not in (select message
+	from item
+	group by message
+	having message like ('%Hillary Clinton%')
+	and message like ('%Donald Trump%'))
+
+
+# show retweet growth for tweets (created yesterday or today)
+SELECT rt.item_id, creation_date, date_time, elapsed_time, rt.share_count, item_url
+FROM retweet_growth AS rt
+JOIN item ON item.item_id=rt.item_id
+WHERE rt.item_id IN 
 	(SELECT item_id
 	FROM retweet_growth
 	GROUP BY item_id
 	HAVING count(item_id)>1)
-ORDER BY item_id, date_time
+AND creation_date::date >= current_date-1
+ORDER BY item_id, date_time, share_count
+
+
 
 
 # update fav / share count
@@ -152,5 +174,9 @@ UPDATE item SET favorite_count = '2000', share_count = '1800' WHERE item_id= '61
 DELETE FROM item_word WHERE item_id IN (SELECT id FROM item where contestant similar to '%[\U0001F44D-\U0001F6FF]%');
 DELETE FROM item_hashtag WHERE item_id IN (SELECT id FROM item where contestant similar to '%[\U0001F44D-\U0001F6FF]%');
 DELETE FROM item WHERE contestant similar to '%[\U0001F44D-\U0001F6FF]%';
+
+delete from retweet_growth where item_id = '325973644276809730';
+delete from item_word where item_id in (select id from item where item_id = '325973644276809730');
+delete from item where item_id = '325973644276809730';
 
 

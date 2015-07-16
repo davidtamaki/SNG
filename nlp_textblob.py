@@ -2,15 +2,7 @@ from textblob import TextBlob
 from sngsql.words import *
 import re
 from config import *
-
-
-# counts consecutive repeating chars for emphasis ( >=3 )
-def consecutive(string):
-        if re.search(r'(.)\1\1', string):
-            return True
-        else:
-            return False
-
+from helper import *
 
 
 # added emphasis to scoring
@@ -98,14 +90,14 @@ def analyse_tweet(tweetstring,expanded_url):
             contestant = str(x)
             break
     if contestant is None and expanded_url is not None:
-        print ('searching url...')
+        # print ('searching url...')
         for x in SEARCH_TERM:
             if all (n.lower() in expanded_url for n in x.split()):
                 print (x)
                 contestant = str(x)
                 break
     if contestant is None:
-        print ('searching any match...')
+        # print ('searching any match...')
         for x in SEARCH_TERM:       
             if any (n.lower() in TB.words.lower() for n in x.split()):
                 print (x)
@@ -126,25 +118,25 @@ def analyse_tweet(tweetstring,expanded_url):
         # words strips out emoticons (only matches emoji)
         # if word in POS_EMOJI:
         if word.lower() in NEGATION:
-            print ('negation word: ' + word)
+            # print ('negation word: ' + word)
             negation_rule = True
             continue
         if binarySearch(POSITIVE, word.lower()):
             if negation_rule == True:
-                print ('negation on pos: ' + word)
+                # print ('negation on pos: ' + word)
                 n+=1
                 negation_rule = False
                 continue
-            print ('pos: ' + word)
+            # print ('pos: ' + word)
             p+=1
             continue
         elif binarySearch(NEGATIVE, word.lower()):
             if negation_rule == True:
-                print ('negation on neg: ' + word)
+                # print ('negation on neg: ' + word)
                 p+=1
                 negation_rule = False
                 continue
-            print ('neg: ' + word)
+            # print ('neg: ' + word)
             n+=1
             continue
         else:
@@ -162,26 +154,6 @@ def analyse_tweet(tweetstring,expanded_url):
         'hashtags':hashtags, 'urls':urls, 'contestant':contestant })
 
 
-
-def binarySearch(alist, item):
-    first = 0
-    last = len(alist)-1
-    found = False
-
-    while first<=last and not found:
-        midpoint = (first + last)//2
-        if alist[midpoint] == item:
-            found = True
-        else:
-            if item < alist[midpoint]:
-                last = midpoint-1
-            else:
-                first = midpoint+1
-    return found
-
-#converts time delta to minutes
-def td_to_minutes(td):
-    return (td.days*1440)+(td.seconds//60)
 
 
 

@@ -6,10 +6,12 @@ from textblob.sentiments import NaiveBayesAnalyzer
 from sngsql.database import Base, db_session, engine
 from sngsql.model import Hashtag, Item, User, Word, Url, Retweet_growth
 from nlp_textblob import *
+from sqlalchemy import and_
 from sqlalchemy.sql import exists, update
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 from config import *
+from helper import *
 
 
 def twitter_crawl():
@@ -55,14 +57,16 @@ class TweetStreamListener(StreamListener):
             if dict_data["retweeted_status"]["quoted_status"]["user"]["followers_count"]<MIN_FOLLOWERS or dict_data["retweeted_status"]["quoted_status"]["user"]["friends_count"]<MIN_FRIENDS:
                 print ("less than user metric threshold for storage, skip." + "\n")
                 return
+            print ('retweeted_quoted_status')
             id_str = dict_data["retweeted_status"]["quoted_status"]["id_str"]
             tweet = dict_data["retweeted_status"]["quoted_status"]["text"]
-            favorite_count = dict_data["retweeted_status"]["quoted_status"]["favorite_count"]
-            share_count = dict_data["retweeted_status"]["quoted_status"]["retweet_count"]
+            favorite_count = dict_data["retweeted_status"]["favorite_count"] # pull fav count from retweet level
+            share_count = dict_data["retweeted_status"]["retweet_count"] # pull share count from retweet level
         elif retweeted_status:
             if dict_data["retweeted_status"]["user"]["followers_count"]<MIN_FOLLOWERS or dict_data["retweeted_status"]["user"]["friends_count"]<MIN_FRIENDS:
                 print ("less than user metric threshold for storage, skip." + "\n")
                 return
+            print ('retweeted_status')
             id_str = dict_data["retweeted_status"]["id_str"]
             tweet = dict_data["retweeted_status"]["text"]
             favorite_count = dict_data["retweeted_status"]["favorite_count"]
@@ -71,6 +75,7 @@ class TweetStreamListener(StreamListener):
             if dict_data["quoted_status"]["user"]["followers_count"]<MIN_FOLLOWERS or dict_data["quoted_status"]["user"]["friends_count"]<MIN_FRIENDS:
                 print ("less than user metric threshold for storage, skip." + "\n")
                 return
+            print ('quoted_status')
             id_str = dict_data["quoted_status"]["id_str"]
             tweet = dict_data["quoted_status"]["text"]
             favorite_count = dict_data["quoted_status"]["favorite_count"]
@@ -79,6 +84,7 @@ class TweetStreamListener(StreamListener):
             if dict_data["user"]["followers_count"]<MIN_FOLLOWERS or dict_data["user"]["friends_count"]<MIN_FRIENDS:
                 print ("less than user metric threshold for storage, skip." + "\n")
                 return
+            print ('normal_status')
             id_str = dict_data["id_str"]
             tweet = dict_data["text"]
             favorite_count = dict_data["favorite_count"] # should be 0
@@ -89,8 +95,13 @@ class TweetStreamListener(StreamListener):
         ### Testing time to index postgres ###
         # t = time.process_time() # T start
 
-        (ret, ), = db_session.query(exists().where(Item.item_id==str(id_str)))
+        (ret, ), = db_session.query(exists().where(Item.item_id==id_str))
         if ret: 
+            # quoted tweets contain no new data
+            if quoted_status or retweeted_quoted_status:
+                print ('Quoted / Retweeted_quoted tweet caught. No update. ID: ' + str(id_str) + '\n')
+                return
+
             # Item already exists. Update share_count, favorite_count, and add retweet growth
             record = db_session.query(Item).filter(Item.item_id==id_str).one()
             record.favorite_count=favorite_count
@@ -99,6 +110,17 @@ class TweetStreamListener(StreamListener):
 
             timedelta = datetime.datetime.utcnow()-datetime.datetime.strptime(str(record.date),'%Y-%m-%d %H:%M:%S')
             minutes_elapsed = td_to_minutes(timedelta)
+
+            # only store one record per minute (only update share count)
+            (ret2, ), = db_session.query(exists().where(and_(Retweet_growth.item_id==id_str,
+                Retweet_growth.elapsed_time==minutes_elapsed)))
+            if ret2:
+                record2 = db_session.query(Retweet_growth).filter(and_(Retweet_growth.item_id==id_str),
+                    Retweet_growth.elapsed_time==minutes_elapsed).one()
+                record2.share_count=share_count
+                db_session.flush()
+                print ('Retweet caught. Updated favorite, share count, retweet_growth. ID: ' + str(id_str) + '\n')
+                return
 
             try:
                 rt = Retweet_growth(item_id=id_str,
@@ -111,7 +133,7 @@ class TweetStreamListener(StreamListener):
             except OperationalError:
                 db_session.rollback()
 
-            print ('Retweet caught. Updated favorite, share count, and Retweet growth. ID: ' + str(id_str) + '\n')
+            print ('Retweet caught. Updated favorite, share count, and new retweet_growth record. ID: ' + str(id_str) + '\n')
             return
 
         # elapsed_time = time.process_time() - t # T end
@@ -202,7 +224,8 @@ class TweetStreamListener(StreamListener):
 
 
         # check tweet is from verified candidate twitter account
-        if str(user_id) in CANDIDATE_USERNAMES[tweet_dict['contestant']]['UserName']:
+        print ('checking for match in: ' + str(CANDIDATE_USERNAMES[tweet_dict['contestant']]['UserName']))
+        if str(screen_name) in CANDIDATE_USERNAMES[tweet_dict['contestant']]['UserName']:
             print ('VERIFIED USER')
             verified = True
         else:
@@ -311,6 +334,7 @@ if __name__ == '__main__':
             print ('protocol error. sleeping 5 seconds... zzz...')
             time.sleep(5)
             continue
+    # twitter_crawl()
 
 
 

@@ -2,14 +2,15 @@ from flask import Flask, request, redirect, url_for, send_from_directory, render
 from flask.ext.paginate import Pagination
 from flask.ext.sqlalchemy import SQLAlchemy
 from sngsql.database import db_session
-from sngsql.model import Hashtag, Item, User, Word, Url
+from sngsql.model import Hashtag, Item, User, Word, Url, Retweet_growth
 from sqlalchemy import and_
 from sqlalchemy.sql import exists
 from flask.ext.cache import Cache
 from flask.ext.twitter_oembedder import TwitterOEmbedder
-import json, requests
+import json, requests, datetime
 from datetime import date, timedelta
 from config import *
+from helper import *
 
 # # from elasticsearch import Elasticsearch
 # # from elasticsearch_dsl import Search, Q
@@ -27,21 +28,6 @@ cache = Cache(app,config={'CACHE_TYPE': 'simple'})
 twitter_oembedder = TwitterOEmbedder(app,cache)
 
 
-def serialise_value(value):
-	if value is None:
-		return None
-	else:
-		return str(value)
-
-def row2dict(row):
-    d = {}
-    for column in row.keys():
-        d[column] = serialise_value((getattr(row, column)))
-    return d
-
-def array_to_dicts(array):
-    return [row2dict(row) for row in array]
-
 def get_timeseries_data():
 	sql = (
 		'''SELECT contestant,
@@ -56,15 +42,22 @@ def get_timeseries_data():
 		ORDER BY sum(share_count) DESC''')
 	timeseries_data = array_to_dicts(db_session.execute(sql))
 
+	tp_data = {}
 	ts_data = {}
-	ts_data['x'] = 'x'
+	tp_data['json'] = {}
 	ts_data['json'] = {}
+	ts_data['x'] = 'x'
 	for row in timeseries_data:
-		ts_data['json'][row['contestant']] = [row['fourdaysago'],row['threedaysago'],row['twodaysago'],row['yesterday'],row['today']]
+		if row['contestant'] == 'Donald Trump':
+			tp_data['json'][row['contestant']] = [row['fourdaysago'],row['threedaysago'],row['twodaysago'],row['yesterday'],row['today']]
+		else:
+			ts_data['json'][row['contestant']] = [row['fourdaysago'],row['threedaysago'],row['twodaysago'],row['yesterday'],row['today']]
 	ts_data['json']['x'] = [str(date.today()-timedelta(4)),str(date.today()-timedelta(3)),str(date.today()-timedelta(2)),str(date.today()-timedelta(1)),str(date.today())]
 	timeseries_data = json.dumps(ts_data)
+	trump_data = json.dumps(tp_data)
 	print (timeseries_data)
-	return timeseries_data
+	print (trump_data)
+	return ({'timeseries_data': timeseries_data, 'trump_data': trump_data})
 
 def get_barchart_data():
 	sql = (
@@ -92,7 +85,9 @@ def get_barchart_data():
 		b_data['json']['neutral'].append(row['pc_neutral'])
 		b_data['json']['positive'].append(row['pc_positive'])
 		bar_categories.append(row['contestant'])
-	# b_data['groups'] = [['negative','neutral','positive']]
+	b_data['groups'] = [['negative','neutral','positive']]
+	b_data['order'] = ['negative','neutral','positive']
+	b_data['colors'] = {'positive': '#2ca02c','neutral': '#1f77b4','negative': '#ff7f0e'}
 	bar_data = json.dumps(b_data)
 	print (bar_data)
 	return ({'bar_data': bar_data, 'bar_categories': bar_categories})
@@ -109,14 +104,18 @@ def static_proxy(path):
 
 @app.route('/')
 def root():
-	l = db_session.query(Item).filter(Item.sentiment == 'positive').order_by(Item.share_count.desc()).all()
+	last24hours = datetime.datetime.utcnow() - datetime.timedelta(days=1)
+
+	l = (db_session.query(Item).filter(and_(Item.sentiment == 'positive',
+		Item.date > last24hours)).order_by(Item.share_count.desc()).all())
 	response_left = l[0:10]
 	print('Total %d hits found.' % len(l))
 	for h in response_left:
 		h.polarity = round(h.polarity,2)
 		h.subjectivity = round(h.subjectivity,2)
 
-	r = db_session.query(Item).filter(Item.sentiment == 'negative').order_by(Item.share_count.desc()).all()
+	r = (db_session.query(Item).filter(and_(Item.sentiment == 'negative',
+		Item.date > last24hours)).order_by(Item.share_count.desc()).all())
 	response_right = r[0:10]
 	print('Total %d hits found.' % len(r))
 	for h in response_right:
@@ -124,13 +123,16 @@ def root():
 		h.subjectivity = round(h.subjectivity,2)
 
 	# for charts
-	timeseries_data = get_timeseries_data()
+	timeseries_result = get_timeseries_data()
+	timeseries_data = timeseries_result['timeseries_data']
+	trump_data = timeseries_result['trump_data']
 	bar_result = get_barchart_data()
 	bar_data = bar_result['bar_data']
 	bar_categories = bar_result['bar_categories']
 
 	return render_template('index.html',jsondata_left=response_left,jsondata_right=response_right,
-		timeseries_data=timeseries_data,bar_data=bar_data,bar_categories=bar_categories)
+		timeseries_data=timeseries_data,trump_data=trump_data,
+		bar_data=bar_data,bar_categories=bar_categories)
 
 
 #source type (e.g. twitter or instagram)

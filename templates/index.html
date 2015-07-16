@@ -136,12 +136,14 @@
               label: '% of Retweets'
           }
         }
-        // colors: {
-        //   positive: '#1f77b4',
-        //   neutral: '#1f77b4',
-        //   negative: '#ff7f0e'
-        // }
       });
+
+    setTimeout(function () {
+      chart_ts.load({
+        data: {{trump_data|safe}}
+      });
+    }, 2000);
+
     </script>
 
   </body>
