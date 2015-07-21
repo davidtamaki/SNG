@@ -42,10 +42,6 @@ class TwitterOEmbedder(object):
                     params = {'id':tweet_id,
                               'omit_script':omit_script}
                     r = requests.get(url, params=params, auth=auth)
-                    
-                    if "errors" in r.json():
-                        print (r.json())
-                        return ''
 
                     try:
                         tweet_html = Markup(r.json()[u'html'])
@@ -57,4 +53,3 @@ class TwitterOEmbedder(object):
                     return tweet_html
                 return get_tweet_html(tweet_id, omit_script)
             return dict(oembed_tweet=oembed_tweet)
-

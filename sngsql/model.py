@@ -32,6 +32,7 @@ class Item(Base):
     user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
     message = Column(String(300), nullable=False)
     item_id = Column(String(100), nullable=False, unique=True)
+    group_item_id = Column(String(100), nullable=False) # group by expanded urls
     item_type = Column(String(100), nullable=False)
     item_url = Column(String(100), nullable=False)
     location = Column(String(100)) # only twitter
@@ -104,6 +105,7 @@ class Word(Base):
 class Url(Base):
     __tablename__ = 'url'
     id = Column(Integer, primary_key=True)
+    item_id = Column(String(100), ForeignKey('item.item_id'), nullable=False, unique=True) # added 17/7/2015
     url = Column(String(200), nullable=False)
 
     def __repr__(self):

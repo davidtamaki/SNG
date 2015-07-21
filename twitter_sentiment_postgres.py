@@ -234,7 +234,15 @@ class TweetStreamListener(StreamListener):
         # for retweet growth
         timedelta = datetime.datetime.utcnow()-datetime.datetime.strptime(date,'%Y-%m-%dT%H:%M:%S')
         minutes_elapsed = td_to_minutes(timedelta)
-        # print (str(minutes_elapsed))
+
+
+        # for group_item_id
+        url_record = db_session.query(Url).filter(Url.url==expanded_url).first()
+        try:
+            group_item_id = url_record.item_id
+        except AttributeError:
+            group_item_id = id_str
+
 
         try:
             u = db_session.query(User).filter_by(uid=str(user_id)).one()
@@ -251,6 +259,7 @@ class TweetStreamListener(StreamListener):
         tw = Item(message=tweet,
                 contestant=tweet_dict['contestant'],
                 item_id=id_str,
+                group_item_id=group_item_id, # for expanded url
                 item_type=item_type,
                 item_url=item_url,
                 location=location,
@@ -267,6 +276,8 @@ class TweetStreamListener(StreamListener):
                 verified_user=verified,
                 team=tweet_dict['team'],
                 data=json.dumps(data))
+        db_session.add(tw)
+        db_session.commit()
 
         try:
             # words
@@ -291,7 +302,12 @@ class TweetStreamListener(StreamListener):
                     tw.hashtags.append(t_obj)
                     u.hashtags.append(t_obj)
 
-            # to add... URL table!!
+            # url
+            if expanded_url and len(expanded_url)<200:
+                url = Url(item_id=id_str,
+                    url=expanded_url)
+                db_session.add(url)
+                db_session.commit()
 
             # retweet growth
             rt = Retweet_growth(item_id=id_str,
@@ -299,11 +315,6 @@ class TweetStreamListener(StreamListener):
                 creation_date=date,
                 elapsed_time=minutes_elapsed,
                 share_count=share_count)
-
-            db_session.add(u)
-            db_session.commit()
-            db_session.add(tw)
-            db_session.commit()
             db_session.add(rt)
             db_session.commit()
 
@@ -331,7 +342,7 @@ if __name__ == '__main__':
         try:
             twitter_crawl()
         except:
-            print ('protocol error. sleeping 5 seconds... zzz...')
+            print ('Error. sleeping 5 seconds... zzz...')
             time.sleep(5)
             continue
     # twitter_crawl()

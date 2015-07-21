@@ -3,7 +3,7 @@ from flask.ext.paginate import Pagination
 from flask.ext.sqlalchemy import SQLAlchemy
 from sngsql.database import db_session
 from sngsql.model import Hashtag, Item, User, Word, Url, Retweet_growth
-from sqlalchemy import and_
+from sqlalchemy import and_, distinct
 from sqlalchemy.sql import exists
 from flask.ext.cache import Cache
 from flask.ext.twitter_oembedder import TwitterOEmbedder
@@ -25,17 +25,23 @@ db = SQLAlchemy(app)
 cache = Cache(app,config={'CACHE_TYPE': 'simple'})
 
 # for tweet embeding
-twitter_oembedder = TwitterOEmbedder(app,cache)
+twitter_oembedder = TwitterOEmbedder()
+twitter_oembedder.init(app,cache,debug=False)
 
 
 def get_timeseries_data():
 	sql = (
 		'''SELECT contestant,
-			sum(CASE WHEN date::date = current_date-4 THEN share_count ELSE NULL END) AS fourdaysago,
-			sum(CASE WHEN date::date = current_date-3 THEN share_count ELSE NULL END) AS threedaysago,
-			sum(CASE WHEN date::date = current_date-2 THEN share_count ELSE NULL END) AS twodaysago,
-			sum(CASE WHEN date::date = current_date-1 THEN share_count ELSE NULL END) AS yesterday,
-			sum(CASE WHEN date::date = current_date THEN share_count ELSE NULL END) AS today
+			sum(CASE WHEN date::date = current_date-4 THEN share_count ELSE NULL END) +
+				count(CASE WHEN date::date = current_date-4 AND share_count = '0' THEN item_id ELSE NULL END)AS fourdaysago,
+			sum(CASE WHEN date::date = current_date-3 THEN share_count ELSE NULL END) +
+				count(CASE WHEN date::date = current_date-3 AND share_count = '0' THEN item_id ELSE NULL END)AS threedaysago,
+			sum(CASE WHEN date::date = current_date-2 THEN share_count ELSE NULL END) +
+				count(CASE WHEN date::date = current_date-2 AND share_count = '0' THEN item_id ELSE NULL END)AS twodaysago,
+			sum(CASE WHEN date::date = current_date-1 THEN share_count ELSE NULL END) +
+				count(CASE WHEN date::date = current_date-1 AND share_count = '0' THEN item_id ELSE NULL END) AS yesterday,
+			sum(CASE WHEN date::date = current_date THEN share_count ELSE NULL END) +
+				count(CASE WHEN date::date = current_date AND share_count = '0' THEN item_id ELSE NULL END) AS today
 		FROM item
 		GROUP BY contestant
 		HAVING sum(share_count)>10000
@@ -67,10 +73,10 @@ def get_barchart_data():
 			ROUND(100*SUM(CASE WHEN sentiment ='positive' THEN share_count ELSE NULL END)/SUM(share_count),2) AS pc_positive,
 			SUM(share_count) AS total_retweet_count
 		FROM item
+		WHERE date > (CURRENT_TIMESTAMP - INTERVAL '24 hours')
 		GROUP BY contestant
-		HAVING SUM(share_count) > 10000
-		ORDER BY pc_positive DESC
-		''')
+		HAVING SUM(share_count) > 100
+		ORDER BY pc_positive DESC''')
 	bar_data = array_to_dicts(db_session.execute(sql))
 
 	b_data = {}
@@ -106,21 +112,38 @@ def static_proxy(path):
 def root():
 	last24hours = datetime.datetime.utcnow() - datetime.timedelta(days=1)
 
-	l = (db_session.query(Item).filter(and_(Item.sentiment == 'positive',
-		Item.date > last24hours)).order_by(Item.share_count.desc()).all())
+	# l = (db_session.query(Item).distinct(Item.group_item_id).
+	# 	filter(and_(Item.sentiment == 'positive', Item.date > last24hours)).
+	# 	order_by(Item.group_item_id,Item.share_count.desc()).all())
+	sql = (
+		'''SELECT contestant, date, item_id, group_item_id, favorite_count, share_count, message, item_url, sentiment, polarity, source
+		FROM item WHERE item_id IN
+			(SELECT DISTINCT ON (group_item_id) item_id
+			FROM item
+			WHERE sentiment = 'positive'
+			AND date > '%s'
+			ORDER BY group_item_id)
+		ORDER BY share_count DESC''' % last24hours)
+	l = array_to_dicts(db_session.execute(sql))
 	response_left = l[0:10]
-	print('Total %d hits found.' % len(l))
-	for h in response_left:
-		h.polarity = round(h.polarity,2)
-		h.subjectivity = round(h.subjectivity,2)
+	print('Total %d hits found for left.' % len(l))
+	# for h in response_left:
+	# 	h.polarity = round(h.polarity,2)
+	# 	h.subjectivity = round(h.subjectivity,2)
 
-	r = (db_session.query(Item).filter(and_(Item.sentiment == 'negative',
-		Item.date > last24hours)).order_by(Item.share_count.desc()).all())
+	sql = (
+		'''SELECT contestant, date, item_id, group_item_id, favorite_count, share_count, message, item_url, sentiment, polarity, source
+		FROM item WHERE item_id IN
+			(SELECT DISTINCT ON (group_item_id) item_id
+			FROM item
+			WHERE sentiment = 'negative'
+			AND date > '%s'
+			ORDER BY group_item_id)
+		ORDER BY share_count DESC''' % last24hours)
+	r = array_to_dicts(db_session.execute(sql))
 	response_right = r[0:10]
-	print('Total %d hits found.' % len(r))
-	for h in response_right:
-		h.polarity = round(h.polarity,2)
-		h.subjectivity = round(h.subjectivity,2)
+	print('Total %d hits found for right.' % len(r))
+
 
 	# for charts
 	timeseries_result = get_timeseries_data()
@@ -129,6 +152,7 @@ def root():
 	bar_result = get_barchart_data()
 	bar_data = bar_result['bar_data']
 	bar_categories = bar_result['bar_categories']
+
 
 	return render_template('index.html',jsondata_left=response_left,jsondata_right=response_right,
 		timeseries_data=timeseries_data,trump_data=trump_data,

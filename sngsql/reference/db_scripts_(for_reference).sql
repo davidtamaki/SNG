@@ -1,9 +1,9 @@
-# popular words
-SELECT word, count(word) 
-FROM word
-GROUP BY word
-HAVING count(word)>1
-ORDER BY count(word) DESC
+# popular urls
+SELECT url, count(url) AS count
+FROM url
+GROUP BY url
+HAVING count(url)>1
+ORDER BY count(url) DESC
 
 
 # avg sentiment by hashtag for each contestant
@@ -31,15 +31,20 @@ where hashtag = 'Clinton'
 
 
 # average sentiment scores of contestants
-SELECT contestant, ROUND(CAST(AVG(polarity) AS NUMERIC),2) AS avg_sentiment,
-	SUM(CASE WHEN sentiment ='negative' THEN share_count ELSE NULL END) AS negative,
-	SUM(CASE WHEN sentiment ='neutral' THEN share_count ELSE NULL END) AS neutral,
-	SUM(CASE WHEN sentiment ='positive' THEN share_count ELSE NULL END) AS positive,
+SELECT contestant,
+	ROUND(100*SUM(CASE WHEN sentiment_textblob ='negative' THEN share_count ELSE NULL END)/SUM(share_count),2) AS pc_negative_tb,
+	ROUND(100*SUM(CASE WHEN sentiment ='negative' THEN share_count ELSE NULL END)/SUM(share_count),2) AS pc_negative,
+	ROUND(100*SUM(CASE WHEN sentiment_textblob ='neutral' THEN share_count ELSE NULL END)/SUM(share_count),2) AS pc_neutral_tb,
+	ROUND(100*SUM(CASE WHEN sentiment ='neutral' THEN share_count ELSE NULL END)/SUM(share_count),2) AS pc_neutral,
+	ROUND(100*SUM(CASE WHEN sentiment_textblob ='positive' THEN share_count ELSE NULL END)/SUM(share_count),2) AS pc_positive_tb,
+	ROUND(100*SUM(CASE WHEN sentiment ='positive' THEN share_count ELSE NULL END)/SUM(share_count),2) AS pc_positive,
+	COUNT(share_count) AS tweet_count,
 	SUM(share_count) AS total_retweet_count
 FROM item
+WHERE date > (CURRENT_TIMESTAMP - INTERVAL '24 hours')
 GROUP BY contestant
-HAVING SUM(share_count) > 5000
-ORDER BY SUM(share_count) DESC
+HAVING SUM(share_count) > 100
+ORDER BY pc_positive DESC
 
 
 # basic time series plot of retweet count
@@ -142,13 +147,13 @@ WHERE date::date = current_date-1
 select contestant, item_id, message, sentiment, polarity, date
 from item
 group by contestant, item_id, message, sentiment, polarity, date
-having message like ('%Clinton%')
-and message like ('%Trump%')
+having message ilike ('%Clinton%')
+and message ilike ('%Trump%')
 and message not in (select message
 	from item
 	group by message
-	having message like ('%Hillary Clinton%')
-	and message like ('%Donald Trump%'))
+	having message ilike ('%Hillary Clinton%')
+	and message ilike ('%Donald Trump%'))
 
 
 # show retweet growth for tweets (created yesterday or today)
@@ -164,11 +169,32 @@ AND creation_date::date >= current_date-1
 ORDER BY item_id, date_time, share_count
 
 
+# verified user tweets
+select contestant, screen_name, date, item_id, followers_count, share_count, message, item_url, sentiment
+from "user"
+join item on item.user_id="user".id
+where verified_user = true
+order by date::DATE DESC, contestant
+
+
+# grouped items by expanded urls
+SELECT contestant, date, item_id, group_item_id, favorite_count, share_count, message, item_url, sentiment, polarity, source
+FROM item
+WHERE item_id IN
+	(SELECT DISTINCT ON (group_item_id) item_id
+	FROM item
+	WHERE sentiment = 'positive'
+	AND date > (CURRENT_TIMESTAMP - interval '24 hours')
+	ORDER BY group_item_id)
+ORDER BY share_count DESC
+
 
 
 # update fav / share count
 UPDATE item SET favorite_count = '2000', share_count = '1800' WHERE item_id= '617592269621694464';
 UPDATE item SET favorite_count = '2000', share_count = '1800' WHERE item_id= '617527052086976512';
+
+UPDATE item SET group_item_id=item_id 
 
 # remove data with foreign key constraints
 DELETE FROM item_word WHERE item_id IN (SELECT id FROM item where contestant similar to '%[\U0001F44D-\U0001F6FF]%');
@@ -178,5 +204,12 @@ DELETE FROM item WHERE contestant similar to '%[\U0001F44D-\U0001F6FF]%';
 delete from retweet_growth where item_id = '325973644276809730';
 delete from item_word where item_id in (select id from item where item_id = '325973644276809730');
 delete from item where item_id = '325973644276809730';
+
+
+# db size
+select t1.datname AS db_name,  
+       pg_size_pretty(pg_database_size(t1.datname)) as db_size
+from pg_database t1
+order by pg_database_size(t1.datname) desc;
 
 

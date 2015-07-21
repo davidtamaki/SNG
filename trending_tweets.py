@@ -8,6 +8,10 @@ from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 from config import *
 from helper import *
 
+def string_div(a,b):
+	if a=='0' or b=='0.0':
+		return 1
+	return (float(a)/float(b))
 
 def calc_growth():
 	sql = (
@@ -18,22 +22,27 @@ def calc_growth():
 			FROM retweet_growth
 			GROUP BY item_id
 			HAVING count(item_id)>1)
-		AND current_timestamp - creation_date::timestamp <= INTERVAL '3 hours'
+		AND current_timestamp - creation_date::timestamp <= INTERVAL '5 hours'
 		ORDER BY item_id, date_time, share_count''')
 
 	tweet_data = array_to_dicts(db_session.execute(sql))
 
-	tweets_list = {}
+	# create dict by item_id: [date_time, share_count, elapsed_time, rate] 
+	tweet_list = {}
 	for row in tweet_data:
 		key = row['item_id']
-		rest = [row['date_time'],row['elapsed_time'],row['share_count']]
-		tweets_list.setdefault(key, []).append(rest)
+		sc, et = int(row['share_count']),float(row['elapsed_time'])
+		# rest = [row['date_time'],sc,et,string_div(sc,et)]
+		rest = (sc,et)
+		tweet_list.setdefault(key, []).append(rest)
 
-	print('Total %d hits found.' % len(tweet_data))
-	
-	for t in tweets_list:
+	f = open("tests/retweet_growth.txt", "w")
+	for key, value in tweet_list.items():
+		f.write(str(key) + ';' + str(value) + '\n')
+	f.close()
 
-	
+	print('Total %d hits found.' % len(tweet_list))
+
 	
 
 	return True
