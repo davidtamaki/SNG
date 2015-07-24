@@ -14,17 +14,38 @@ from config import *
 from helper import *
 
 
+from pubnub import Pubnub
+
+pubnub = Pubnub(publish_key=pubnub_publish_key, subscribe_key=pubnub_subscribe_key)
+
+def callback(message, channel):
+    print(message)
+  
+def error(message):
+    print("ERROR : " + str(message))
+  
+def connect(message):
+    print("CONNECTED")
+    pubnub.publish(channel='pubnub-sng', message='Hello from the PubNub Python SDK')
+    
+def reconnect(message):
+    print("RECONNECTED")
+  
+def disconnect(message):
+    print("DISCONNECTED")
+  
+pubnub.subscribe(channels='pubnub-sng', callback=callback, error=callback,
+                 connect=connect, reconnect=reconnect, disconnect=disconnect)
+
+
 def twitter_crawl():
     # create instance of the tweepy tweet stream listener
     listener = TweetStreamListener()
-
     # set twitter keys/tokens
     auth = OAuthHandler(consumer_key, consumer_secret)
     auth.set_access_token(twitter_access_token, access_token_secret)
-
     # create instance of the tweepy stream
     stream = Stream(auth, listener)
-
     # search twitter for keywords
     stream.filter(languages=['en'], track=SEARCH_TERM)
 
@@ -321,6 +342,9 @@ class TweetStreamListener(StreamListener):
         except OperationalError:
             db_session.rollback()
 
+        # call to trending tweets function
+        if 1:
+            pubnub.publish(channel='pubnub-sng',message=id_str)
 
         # output key fields
         print (str(screen_name) + '   My score: ' + str(tweet_dict['sentiment']) + '   TB score: ' + sentiment_textblob ) # + '   Bayes score: ' + sentiment_bayes)
@@ -338,14 +362,14 @@ class TweetStreamListener(StreamListener):
         print (str(status) + ' error with connection')
 
 if __name__ == '__main__':
-    while 1:
-        try:
-            twitter_crawl()
-        except:
-            print ('Error. sleeping 5 seconds... zzz...')
-            time.sleep(5)
-            continue
-    # twitter_crawl()
+    # while 1:
+    #     try:
+    #         twitter_crawl()
+    #     except:
+    #         print ('Error. sleeping 5 seconds... zzz...')
+    #         time.sleep(5)
+    #         continue
+    twitter_crawl()
 
 
 

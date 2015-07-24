@@ -110,41 +110,36 @@ def static_proxy(path):
 
 @app.route('/')
 def root():
-	last24hours = datetime.datetime.utcnow() - datetime.timedelta(days=1)
+	sql = ('''DISCARD TEMP;
 
-	# l = (db_session.query(Item).distinct(Item.group_item_id).
-	# 	filter(and_(Item.sentiment == 'positive', Item.date > last24hours)).
-	# 	order_by(Item.group_item_id,Item.share_count.desc()).all())
-	sql = (
-		'''SELECT contestant, date, item_id, group_item_id, favorite_count, share_count, message, item_url, sentiment, polarity, source
-		FROM item WHERE item_id IN
-			(SELECT DISTINCT ON (group_item_id) item_id
-			FROM item
-			WHERE sentiment = 'positive'
-			AND date > '%s'
-			ORDER BY group_item_id)
-		ORDER BY share_count DESC''' % last24hours)
-	l = array_to_dicts(db_session.execute(sql))
-	response_left = l[0:10]
-	print('Total %d hits found for left.' % len(l))
-	# for h in response_left:
-	# 	h.polarity = round(h.polarity,2)
-	# 	h.subjectivity = round(h.subjectivity,2)
+			CREATE TEMPORARY TABLE pos AS
+			SELECT contestant, date, item_id, group_item_id, favorite_count, share_count, item_url, sentiment, source
+			FROM item WHERE item_id IN
+				(SELECT DISTINCT ON (group_item_id) item_id
+				FROM item
+				WHERE sentiment = 'positive'
+				AND date > (CURRENT_TIMESTAMP - interval '24 hours')
+				ORDER BY group_item_id)
+			ORDER BY share_count DESC
+			LIMIT 10;
 
-	sql = (
-		'''SELECT contestant, date, item_id, group_item_id, favorite_count, share_count, message, item_url, sentiment, polarity, source
-		FROM item WHERE item_id IN
-			(SELECT DISTINCT ON (group_item_id) item_id
-			FROM item
-			WHERE sentiment = 'negative'
-			AND date > '%s'
-			ORDER BY group_item_id)
-		ORDER BY share_count DESC''' % last24hours)
-	r = array_to_dicts(db_session.execute(sql))
-	response_right = r[0:10]
-	print('Total %d hits found for right.' % len(r))
+			CREATE TEMPORARY TABLE neg AS
+			SELECT contestant, date, item_id, group_item_id, favorite_count, share_count, item_url, sentiment, source
+			FROM item WHERE item_id IN
+				(SELECT DISTINCT ON (group_item_id) item_id
+				FROM item
+				WHERE sentiment = 'negative'
+				AND date > (CURRENT_TIMESTAMP - interval '24 hours')
+				ORDER BY group_item_id)
+			ORDER BY share_count DESC
+			LIMIT 10;
 
-
+			SELECT * FROM pos
+			UNION ALL
+			SELECT * FROM neg;''')
+	tweet_data = array_to_dicts(db_session.execute(sql))
+	print (tweet_data)
+	
 	# for charts
 	timeseries_result = get_timeseries_data()
 	timeseries_data = timeseries_result['timeseries_data']
@@ -154,7 +149,7 @@ def root():
 	bar_categories = bar_result['bar_categories']
 
 
-	return render_template('index.html',jsondata_left=response_left,jsondata_right=response_right,
+	return render_template('index.html',tweet_data=tweet_data,
 		timeseries_data=timeseries_data,trump_data=trump_data,
 		bar_data=bar_data,bar_categories=bar_categories)
 

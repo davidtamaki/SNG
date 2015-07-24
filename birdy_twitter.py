@@ -4,7 +4,14 @@ from oauthlib.oauth2 import BackendApplicationClient
 from oauthlib.common import to_unicode
 # from . import __version__
 from config import *
-
+from helper import *
+from flask.ext.sqlalchemy import SQLAlchemy
+from sngsql.model import Hashtag, Item, User, Word, Url, Retweet_growth
+from sngsql.database import Base, db_session, engine
+from sqlalchemy.sql import exists, update
+from sqlalchemy.exc import OperationalError
+from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
+from sqlalchemy import and_, distinct
 import requests
 import json
 
@@ -12,6 +19,10 @@ TWITTER_API_VERSION = '1.1'
 TWITTER_BASE_API_URL = 'https://%s.twitter.com'
 
 __version__ = '0.2'
+
+
+# USE THIS SCRIPT TO MANUALLY UPDATE RETWEET AND FAV COUNT (SEE BOTTOM)!
+
 
 class BirdyException(Exception):
     def __init__(self, msg, resource_url=None, request_method=None, status_code=None, error_code=None, headers=None):
@@ -421,16 +432,41 @@ class StreamClient(BaseTwitterClient):
 
 
 
-
-
+# UPDATE RETWEET AND FAV COUNT!
+# CHANGE SQL text to create list of id strings to update
 if __name__ == '__main__':
+
+    sql = '''SELECT item_id, screen_name
+        FROM "user"
+        JOIN item ON item.user_id="user".id
+        WHERE verified_user = True
+        ORDER BY screen_name, item_id'''
+    tweet_data = array_to_dicts(db_session.execute(sql))
+
+    id_list = []
+    for row in tweet_data:
+        temp = row['item_id']
+        id_list.append(temp)
+
+    print(len(id_list))
+    id_list = id_list[0:100]
+    print (len(id_list))
+
     client = UserClient(consumer_key, consumer_secret, twitter_access_token, access_token_secret)
-    response = client.api.statuses.lookup.get(id='623158655953715202,623286274422632448')
+    response = client.api.statuses.lookup.get(id=id_list)
 
     for x in response.data:
         json_data = json.dumps(x)
         dict_data = json.loads(json_data)
-        print (dict_data['retweet_count'])
+        record = db_session.query(Item).filter(Item.item_id==dict_data['id_str']).one()
+        old_fav = record.favorite_count
+        old_share = record.share_count
+        record.favorite_count=dict_data['favorite_count']
+        record.share_count=dict_data['retweet_count']
+        db_session.commit()
+        print (str(dict_data['id_str']) 
+            + '  fav_count: ' + str(old_fav) + ' -> ' + str(dict_data['favorite_count'])
+            + '  share_count: ' + str(old_share) + ' -> ' + str(dict_data['retweet_count']))
     
 
 

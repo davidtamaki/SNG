@@ -6,15 +6,57 @@
     <link rel="stylesheet" href="{{url_for('static', filename='jquery.oembed.css') }}"/>
     <link rel="stylesheet" href="{{url_for('static', filename='c3.min.css') }}"/>
 
-    <script>          
+    <script>
       function init() {
         $("a.embed").oembed();
       }
-      window.onload = init;
+
+      function renderItem(data) {
+        var itemString = ("<li>Sentiment: " + data.sentiment +
+          " Favourites: " + data.favorite_count + 
+          " Shared: " + data.share_count + 
+          '<div id="twitter_' + data.item_id + '"></div>' +
+        "</li>")
+        console.log(itemString)
+        return $(itemString);
+      }
+
+      function renderTweetEmbed(data) {
+        twttr.widgets.createTweet(
+          data.item_id,
+          document.getElementById('twitter_'+data.item_id),
+          {
+            // theme: 'dark'
+          }
+        );
+      }
+
+      function renderAndPrepend(data) {
+        var containerID = '#' + data.sentiment + 'ItemData';
+        $(containerID).United_States_presidential_electionpend(renderItem(data));
+        renderTweetEmbed(data);
+      }
+
+      var tweetData = {{tweet_data|safe}};
+
+
+      function start() {
+        init();
+        for (i = tweetData.length-1; i >= 0; i--) {
+          renderAndPrepend(tweetData[i])
+        }
+        // CALL PUBNUB HERE!!!
+      }
+
+      window.onload = start;
+
     </script>          
+
+
 
   </head>
   <body>
+    <meta name="twitter:widgets:csp" content="on">
 
     <div class="container"> <!-- container start -->
       <div class="header">
@@ -32,37 +74,14 @@
 
          <div style="float:left; width: 50%">
           Top 10 Positive Items:<br />
-          <ul>
-          {% for item in jsondata_left %}
-            <li>Sentiment: {{item.sentiment}} 
-                Favourites: {{item.favorite_count}}  
-                Shared: {{item.share_count}}  
-                {% if item.source == "twitter" %}
-                  {{oembed_tweet(item.item_id)}}
-                {% else %}
-                  <a href="{{item.item_url}}" class="embed"></a>
-                {% endif %}
-            </li>
-          {% endfor %}
+          <ul id="positiveItemData">
+
           </ul>
          </div> <!-- end div left -->
 
          <div style="float:right; width: 50%">
           Top 10 Negative Items:<br />
-          <ul>
-          {% for item in jsondata_right %}
-            <li>Sentiment: {{item.sentiment}}  
-                Polarity: {{item.polarity}}  
-                Subjectivity: {{item.subjectivity}}  
-                Favourites: {{item.favorite_count}}  
-                Shared: {{item.share_count}}
-                {% if item.source == "twitter" %}
-                  {{oembed_tweet(item.item_id)}}
-                {% else %}
-                  <a href="{{item.item_url}}" class="embed"></a>
-                {% endif %}
-              </li>
-          {% endfor %}
+          <ul id="negativeItemData">
           </ul>          
          </div> <!-- end div right -->
 
@@ -98,6 +117,11 @@
     <!-- Load d3.js and c3.js -->
     <script type=text/javascript src="{{url_for('static', filename='d3.min.js') }}" charset="utf-8"></script>
     <script type=text/javascript src="{{url_for('static', filename='c3.min.js') }}"></script>
+
+    <!-- For PubNub -->
+    <!-- <script type=text/javascript src="{{url_for('static', filename='app.js') }}" charset="utf-8"></script> -->
+    <script type=text/javascript src="{{url_for('static', filename='pubnub-3.7.13.min.js') }}"></script>
+    <script src="https://cdn.pubnub.com/pubnub-dev.js"></script>
 
     <!-- FOR JQUERY, UNDERSCORE, BACKBONE -->
     <script src="http://documentcloud.github.com/underscore/underscore-min.js"></script>
