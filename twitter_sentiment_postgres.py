@@ -342,9 +342,14 @@ class TweetStreamListener(StreamListener):
         except OperationalError:
             db_session.rollback()
 
+
         # call to trending tweets function
         if 1:
-            pubnub.publish(channel='pubnub-sng',message=id_str)
+            pubnub_object = ({'sentiment': tweet_dict['sentiment'], 'group_item_id': group_item_id, 
+        'item_id': id_str, 'source': 'twitter', 'favorite_count': favorite_count,
+        'share_count': share_count, 'contestant': tweet_dict['contestant'], 
+        'item_url': item_url, 'date': date})
+            pubnub.publish(channel='pubnub-sng',message=pubnub_object)
 
         # output key fields
         print (str(screen_name) + '   My score: ' + str(tweet_dict['sentiment']) + '   TB score: ' + sentiment_textblob ) # + '   Bayes score: ' + sentiment_bayes)

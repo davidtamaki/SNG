@@ -6,6 +6,10 @@
     <link rel="stylesheet" href="{{url_for('static', filename='jquery.oembed.css') }}"/>
     <link rel="stylesheet" href="{{url_for('static', filename='c3.min.css') }}"/>
 
+    <!-- For PubNub -->
+    <script type=text/javascript src="{{url_for('static', filename='pubnub-3.7.13.min.js') }}"></script>
+    <script src="https://cdn.pubnub.com/pubnub-dev.js"></script>
+
     <script>
       function init() {
         $("a.embed").oembed();
@@ -37,15 +41,46 @@
         renderTweetEmbed(data);
       }
 
-      var tweetData = {{tweet_data|safe}};
+      /* PubNub start */
+      var channel = 'pubnub-sng';
+      var pubnub = PUBNUB.init({
+        subscribe_key: 'sub-c-5bbb04f8-1108-11e5-91a9-0619f8945a4f'
+      });
 
+      // fetching previous 10 data, then realtime stream
+      function getData() {
+        pubnub.history({
+          channel: channel,
+          count: 10,
+          callback: function(messages) {
+            pubnub.each( messages[0], renderAndPrepend );
+          },
+          error: function(error) {
+            console.log(error);
+          }
+        });
+      }
+
+      function getStreamData() {
+        pubnub.subscribe({
+          channel: channel,
+          callback: renderAndPrepend
+        });
+      }
+
+      // getData();
+
+      /* PubNub end */
+
+
+      var tweetData = {{tweet_data|safe}};
 
       function start() {
         init();
         for (i = tweetData.length-1; i >= 0; i--) {
           renderAndPrepend(tweetData[i])
         }
-        // CALL PUBNUB HERE!!!
+        getStreamData();
       }
 
       window.onload = start;
@@ -117,11 +152,6 @@
     <!-- Load d3.js and c3.js -->
     <script type=text/javascript src="{{url_for('static', filename='d3.min.js') }}" charset="utf-8"></script>
     <script type=text/javascript src="{{url_for('static', filename='c3.min.js') }}"></script>
-
-    <!-- For PubNub -->
-    <!-- <script type=text/javascript src="{{url_for('static', filename='app.js') }}" charset="utf-8"></script> -->
-    <script type=text/javascript src="{{url_for('static', filename='pubnub-3.7.13.min.js') }}"></script>
-    <script src="https://cdn.pubnub.com/pubnub-dev.js"></script>
 
     <!-- FOR JQUERY, UNDERSCORE, BACKBONE -->
     <script src="http://documentcloud.github.com/underscore/underscore-min.js"></script>
