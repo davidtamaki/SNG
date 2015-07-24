@@ -33,7 +33,7 @@
 
       function renderAndPrepend(data) {
         var containerID = '#' + data.sentiment + 'ItemData';
-        $(containerID).United_States_presidential_electionpend(renderItem(data));
+        $(containerID).prepend(renderItem(data));
         renderTweetEmbed(data);
       }
 
@@ -92,7 +92,7 @@
 
       <div>
       This is the JSON data, as a string:<br />
-      <pre>{{jsondata_left}} {{jsondata_right}}</pre>
+      <pre>{{tweet_data}}</pre>
       </div>
  
 
