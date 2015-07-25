@@ -201,10 +201,13 @@ DELETE FROM item_word WHERE item_id IN (SELECT id FROM item where contestant sim
 DELETE FROM item_hashtag WHERE item_id IN (SELECT id FROM item where contestant similar to '%[\U0001F44D-\U0001F6FF]%');
 DELETE FROM item WHERE contestant similar to '%[\U0001F44D-\U0001F6FF]%';
 
-delete from retweet_growth where item_id = '325973644276809730';
-delete from item_word where item_id in (select id from item where item_id = '325973644276809730');
-delete from item where item_id = '325973644276809730';
-
+CREATE TEMPORARY TABLE old_items AS SELECT id, item_id FROM item WHERE date < (CURRENT_TIMESTAMP - INTERVAL '5 days');
+DELETE FROM item_word WHERE item_id IN (SELECT id FROM old_items);
+DELETE FROM item_hashtag WHERE item_id IN (SELECT id FROM old_items);
+DELETE FROM retweet_growth WHERE item_id IN (SELECT item_id FROM old_items);
+DELETE FROM url WHERE item_id IN (SELECT item_id FROM old_items);
+DELETE FROM item WHERE item_id IN (SELECT item_id FROM old_items);
+DISCARD TEMP;
 
 # db size
 select t1.datname AS db_name,  

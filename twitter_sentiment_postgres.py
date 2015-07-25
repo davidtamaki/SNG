@@ -1,6 +1,6 @@
 import json, time, re, datetime
 from tweepy.streaming import StreamListener
-from tweepy import OAuthHandler, Stream
+from tweepy import OAuthHandler, Stream, API
 from textblob import TextBlob
 from textblob.sentiments import NaiveBayesAnalyzer
 from sngsql.database import Base, db_session, engine
@@ -10,30 +10,25 @@ from sqlalchemy import and_
 from sqlalchemy.sql import exists, update
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
+from pubnub import Pubnub
 from config import *
 from helper import *
 
+api = None
 
-from pubnub import Pubnub
-
+# pubnub functions
 pubnub = Pubnub(publish_key=pubnub_publish_key, subscribe_key=pubnub_subscribe_key)
-
 def callback(message, channel):
     print(message)
-  
 def error(message):
-    print("ERROR : " + str(message))
-  
+    print("PUBNUB ERROR : " + str(message))
 def connect(message):
-    print("CONNECTED")
+    print("PUBNUB CONNECTED")
     pubnub.publish(channel='pubnub-sng', message='Hello from the PubNub Python SDK')
-    
 def reconnect(message):
-    print("RECONNECTED")
-  
+    print("PUBNUB RECONNECTED")
 def disconnect(message):
-    print("DISCONNECTED")
-  
+    print("PUBNUB DISCONNECTED")
 pubnub.subscribe(channels='pubnub-sng', callback=callback, error=callback,
                  connect=connect, reconnect=reconnect, disconnect=disconnect)
 
@@ -46,6 +41,9 @@ def twitter_crawl():
     auth.set_access_token(twitter_access_token, access_token_secret)
     # create instance of the tweepy stream
     stream = Stream(auth, listener)
+    # api used for checking rate limits
+    global api 
+    api = API(auth)
     # search twitter for keywords
     stream.filter(languages=['en'], track=SEARCH_TERM)
 
@@ -129,30 +127,30 @@ class TweetStreamListener(StreamListener):
             record.share_count=share_count
             db_session.flush()
 
-            timedelta = datetime.datetime.utcnow()-datetime.datetime.strptime(str(record.date),'%Y-%m-%d %H:%M:%S')
-            minutes_elapsed = td_to_minutes(timedelta)
+            # timedelta = datetime.datetime.utcnow()-datetime.datetime.strptime(str(record.date),'%Y-%m-%d %H:%M:%S')
+            # minutes_elapsed = td_to_minutes(timedelta)
 
-            # only store one record per minute (only update share count)
-            (ret2, ), = db_session.query(exists().where(and_(Retweet_growth.item_id==id_str,
-                Retweet_growth.elapsed_time==minutes_elapsed)))
-            if ret2:
-                record2 = db_session.query(Retweet_growth).filter(and_(Retweet_growth.item_id==id_str),
-                    Retweet_growth.elapsed_time==minutes_elapsed).one()
-                record2.share_count=share_count
-                db_session.flush()
-                print ('Retweet caught. Updated favorite, share count, retweet_growth. ID: ' + str(id_str) + '\n')
-                return
+            # # only store one record per minute (only update share count)
+            # (ret2, ), = db_session.query(exists().where(and_(Retweet_growth.item_id==id_str,
+            #     Retweet_growth.elapsed_time==minutes_elapsed)))
+            # if ret2:
+            #     record2 = db_session.query(Retweet_growth).filter(and_(Retweet_growth.item_id==id_str),
+            #         Retweet_growth.elapsed_time==minutes_elapsed).one()
+            #     record2.share_count=share_count
+            #     db_session.flush()
+            #     print ('Retweet caught. Updated favorite, share count, retweet_growth. ID: ' + str(id_str) + '\n')
+            #     return
 
-            try:
-                rt = Retweet_growth(item_id=id_str,
-                    date_time=now,
-                    creation_date=record.date,
-                    elapsed_time=minutes_elapsed,
-                    share_count=share_count)
-                db_session.add(rt)
-                db_session.commit()
-            except OperationalError:
-                db_session.rollback()
+            # try:
+            #     rt = Retweet_growth(item_id=id_str,
+            #         date_time=now,
+            #         creation_date=record.date,
+            #         elapsed_time=minutes_elapsed,
+            #         share_count=share_count)
+            #     db_session.add(rt)
+            #     db_session.commit()
+            # except OperationalError:
+            #     db_session.rollback()
 
             print ('Retweet caught. Updated favorite, share count, and new retweet_growth record. ID: ' + str(id_str) + '\n')
             return
@@ -331,16 +329,25 @@ class TweetStreamListener(StreamListener):
                 db_session.commit()
 
             # retweet growth
-            rt = Retweet_growth(item_id=id_str,
-                date_time=now,
-                creation_date=date,
-                elapsed_time=minutes_elapsed,
-                share_count=share_count)
-            db_session.add(rt)
-            db_session.commit()
+            # rt = Retweet_growth(item_id=id_str,
+            #     date_time=now,
+            #     creation_date=date,
+            #     elapsed_time=minutes_elapsed,
+            #     share_count=share_count)
+            # db_session.add(rt)
+            # db_session.commit()
 
         except OperationalError:
             db_session.rollback()
+
+
+
+
+        # rate limit for oembed is 180 per 15 minutes
+        # https://dev.twitter.com/rest/reference/get/statuses/oembed
+        limits = api.rate_limit_status()
+        remain_oembed = limits['resources']['statuses']['/statuses/oembed']['remaining']
+        print (remain_oembed)
 
 
         # call to trending tweets function
@@ -351,12 +358,17 @@ class TweetStreamListener(StreamListener):
         'item_url': item_url, 'date': date})
             pubnub.publish(channel='pubnub-sng',message=pubnub_object)
 
+
+
+
+
         # output key fields
         print (str(screen_name) + '   My score: ' + str(tweet_dict['sentiment']) + '   TB score: ' + sentiment_textblob ) # + '   Bayes score: ' + sentiment_bayes)
         print ('Tweet ID: ' + str(id_str))
         print ('Friends Count: ' + str(friends_count) + '    Followers Count: ' + str(followers_count))
         print ('Retweet Count: ' + str(share_count) + '    Favorite Count: ' + str(favorite_count))
         print (str(tweet))
+
         print (item_url + '\n')
 
         return True
