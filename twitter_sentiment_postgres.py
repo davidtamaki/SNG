@@ -1,4 +1,4 @@
-import json, time, re, datetime
+import json, time, re, datetime, math
 from tweepy.streaming import StreamListener
 from tweepy import OAuthHandler, Stream, API
 from textblob import TextBlob
@@ -15,6 +15,7 @@ from config import *
 from helper import *
 
 api = None
+PUBNUB_ON = True
 
 # pubnub functions
 pubnub = Pubnub(publish_key=pubnub_publish_key, subscribe_key=pubnub_subscribe_key)
@@ -81,6 +82,13 @@ class TweetStreamListener(StreamListener):
             tweet = dict_data["retweeted_status"]["quoted_status"]["text"]
             favorite_count = dict_data["retweeted_status"]["favorite_count"] # pull fav count from retweet level
             share_count = dict_data["retweeted_status"]["retweet_count"] # pull share count from retweet level
+            user_id = dict_data["retweeted_status"]["quoted_status"]["user"]["id"]
+            screen_name = dict_data["retweeted_status"]["quoted_status"]["user"]["screen_name"]
+            location = dict_data["retweeted_status"]["quoted_status"]["user"]["location"]
+            followers_count = dict_data["retweeted_status"]["quoted_status"]["user"]["followers_count"]
+            friends_count = dict_data["retweeted_status"]["quoted_status"]["user"]["friends_count"]
+            statuses_count = dict_data["retweeted_status"]["quoted_status"]["user"]["statuses_count"]
+            date = time.strftime('%Y-%m-%dT%H:%M:%S', time.strptime(dict_data["retweeted_status"]["quoted_status"]["created_at"],'%a %b %d %H:%M:%S +0000 %Y'))
         elif retweeted_status:
             if dict_data["retweeted_status"]["user"]["followers_count"]<MIN_FOLLOWERS or dict_data["retweeted_status"]["user"]["friends_count"]<MIN_FRIENDS:
                 print ("less than user metric threshold for storage, skip." + "\n")
@@ -90,6 +98,13 @@ class TweetStreamListener(StreamListener):
             tweet = dict_data["retweeted_status"]["text"]
             favorite_count = dict_data["retweeted_status"]["favorite_count"]
             share_count = dict_data["retweeted_status"]["retweet_count"]
+            user_id = dict_data["retweeted_status"]["user"]["id"]
+            screen_name = dict_data["retweeted_status"]["user"]["screen_name"]
+            location = dict_data["retweeted_status"]["user"]["location"]
+            followers_count = dict_data["retweeted_status"]["user"]["followers_count"]
+            friends_count = dict_data["retweeted_status"]["user"]["friends_count"]
+            statuses_count = dict_data["retweeted_status"]["user"]["statuses_count"]
+            date = time.strftime('%Y-%m-%dT%H:%M:%S', time.strptime(dict_data["retweeted_status"]["created_at"],'%a %b %d %H:%M:%S +0000 %Y'))
         elif quoted_status:
             if dict_data["quoted_status"]["user"]["followers_count"]<MIN_FOLLOWERS or dict_data["quoted_status"]["user"]["friends_count"]<MIN_FRIENDS:
                 print ("less than user metric threshold for storage, skip." + "\n")
@@ -99,6 +114,13 @@ class TweetStreamListener(StreamListener):
             tweet = dict_data["quoted_status"]["text"]
             favorite_count = dict_data["quoted_status"]["favorite_count"]
             share_count = dict_data["quoted_status"]["retweet_count"]
+            user_id = dict_data["quoted_status"]["user"]["id"]
+            screen_name = dict_data["quoted_status"]["user"]["screen_name"]
+            location = dict_data["quoted_status"]["user"]["location"]
+            followers_count = dict_data["quoted_status"]["user"]["followers_count"]
+            friends_count = dict_data["quoted_status"]["user"]["friends_count"]
+            statuses_count = dict_data["quoted_status"]["user"]["statuses_count"]
+            date = time.strftime('%Y-%m-%dT%H:%M:%S', time.strptime(dict_data["quoted_status"]["created_at"],'%a %b %d %H:%M:%S +0000 %Y'))
         else:
             if dict_data["user"]["followers_count"]<MIN_FOLLOWERS or dict_data["user"]["friends_count"]<MIN_FRIENDS:
                 print ("less than user metric threshold for storage, skip." + "\n")
@@ -108,85 +130,82 @@ class TweetStreamListener(StreamListener):
             tweet = dict_data["text"]
             favorite_count = dict_data["favorite_count"] # should be 0
             share_count = dict_data["retweet_count"] # should be 0
+            user_id = dict_data["user"]["id"]
+            screen_name = dict_data["user"]["screen_name"]
+            location = dict_data["user"]["location"]
+            followers_count = dict_data["user"]["followers_count"]
+            friends_count = dict_data["user"]["friends_count"]
+            statuses_count = dict_data["user"]["statuses_count"]
+            date = time.strftime('%Y-%m-%dT%H:%M:%S', time.strptime(dict_data["created_at"],'%a %b %d %H:%M:%S +0000 %Y'))
+        item_url = 'https://twitter.com/' + str(screen_name) + '/status/' + str(id_str)
 
-        now = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        # minumum threshold by elapsed time
+        timedelta = datetime.datetime.utcnow()-datetime.datetime.strptime(date,'%Y-%m-%dT%H:%M:%S')
+        minutes_elapsed = td_to_minutes(timedelta)
+        if minutes_elapsed<20:
+            minimum_rt =  3*minutes_elapsed
+        elif minutes_elapsed<120:
+            minimum_rt =  80*math.log(minutes_elapsed)-180
+        else:
+            minimum_rt = 233
 
-        ### Testing time to index postgres ###
-        # t = time.process_time() # T start
-
-        (ret, ), = db_session.query(exists().where(Item.item_id==id_str))
-        if ret: 
-            # quoted tweets contain no new data
+        try:
+            record = db_session.query(Item).filter(Item.item_id==id_str).one()
             if quoted_status or retweeted_quoted_status:
+                # quoted tweets contain no new data
                 print ('Quoted / Retweeted_quoted tweet caught. No update. ID: ' + str(id_str) + '\n')
                 return
-
-            # Item already exists. Update share_count, favorite_count, and add retweet growth
-            record = db_session.query(Item).filter(Item.item_id==id_str).one()
             record.favorite_count=favorite_count
             record.share_count=share_count
             db_session.flush()
-
-            # timedelta = datetime.datetime.utcnow()-datetime.datetime.strptime(str(record.date),'%Y-%m-%d %H:%M:%S')
-            # minutes_elapsed = td_to_minutes(timedelta)
-
-            # # only store one record per minute (only update share count)
-            # (ret2, ), = db_session.query(exists().where(and_(Retweet_growth.item_id==id_str,
-            #     Retweet_growth.elapsed_time==minutes_elapsed)))
-            # if ret2:
-            #     record2 = db_session.query(Retweet_growth).filter(and_(Retweet_growth.item_id==id_str),
-            #         Retweet_growth.elapsed_time==minutes_elapsed).one()
-            #     record2.share_count=share_count
-            #     db_session.flush()
-            #     print ('Retweet caught. Updated favorite, share count, retweet_growth. ID: ' + str(id_str) + '\n')
-            #     return
-
-            # try:
-            #     rt = Retweet_growth(item_id=id_str,
-            #         date_time=now,
-            #         creation_date=record.date,
-            #         elapsed_time=minutes_elapsed,
-            #         share_count=share_count)
-            #     db_session.add(rt)
-            #     db_session.commit()
-            # except OperationalError:
-            #     db_session.rollback()
-
-            print ('Retweet caught. Updated favorite, share count, and new retweet_growth record. ID: ' + str(id_str) + '\n')
+            if share_count>minimum_rt and PUBNUB_ON:
+                print ('PUBLISHING TO PUBNUB!')
+                pubnub_object = ({'sentiment': record.sentiment, 'group_item_id': record.group_item_id, 
+                    'item_id': id_str, 'source': 'twitter', 'favorite_count': favorite_count,
+                    'share_count': share_count, 'contestant': record.contestant, 
+                    'item_url': item_url, 'date': date})
+                pubnub.publish(channel='pubnub-sng',message=pubnub_object)
+            print ('Retweet caught. Updated favorite and share count record. ID: ' + str(id_str) + '\n')
             return
+        except NoResultFound:
+            pass
+        
 
-        # elapsed_time = time.process_time() - t # T end
-        # print ('pg index time (sec): ' + str(elapsed_time) + '   records in pg: ' + str(db_session.query(Item).count()) + '\n')
-        # f = open("tests/pg_index_output.txt", "a")
-        # f.write(str(elapsed_time) + '  ' + str(db_session.query(Item).count()) + '\n')
-        # f.close()
-
-
-        # preprocess tweet in nlp_textblob
-        expanded_url = None
-        if dict_data["entities"]["urls"]:
+        # preprocessing tweet in nlp_textblob
+        try:
             expanded_url = str(dict_data["entities"]["urls"][0]["expanded_url"]).lower()
+        except IndexError:
+            expanded_url = None
         tweet_dict = analyse_tweet(tweet,expanded_url)
-
-        # could not locate candidate, skip
         if tweet_dict['contestant'] is None:
             print ('CONTESTANT NOT FOUND' + '\n')
             return
+        words = clean_words(tweet_dict['tb_words'],tweet_dict['hashtags'])
+        
+        # for group_item_id
+        url_record = db_session.query(Url).filter(Url.url==expanded_url).first()
+        try:
+            group_item_id = url_record.item_id
+        except AttributeError:
+            group_item_id = id_str
 
-        ####### temporary for comparison #######
-        tweet_trim = tweet
-        urls = re.findall('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', tweet_trim)
-        for u in urls:
-            tweet_trim = tweet_trim.replace(u,'')
-        TB = TextBlob(tweet_trim)
-
-        if TB.sentiment.polarity < 0:
-            sentiment_textblob = "negative"
-        elif TB.sentiment.polarity == 0:
-            sentiment_textblob = "neutral"
+        # check tweet is from verified candidate twitter account
+        if str(screen_name) in CANDIDATE_USERNAMES[tweet_dict['contestant']]['UserName']:
+            print ('VERIFIED USER')
+            verified = True
         else:
-            sentiment_textblob = "positive"
+            verified = False
 
+        # publish to pubnub
+        if (share_count>minimum_rt or verified) and PUBNUB_ON:
+            print ('PUBLISHING TO PUBNUB!')
+            pubnub_object = ({'sentiment': tweet_dict['sentiment'], 'group_item_id': group_item_id, 
+        'item_id': id_str, 'source': 'twitter', 'favorite_count': favorite_count,
+        'share_count': share_count, 'contestant': tweet_dict['contestant'], 
+        'item_url': item_url, 'date': date})
+            pubnub.publish(channel='pubnub-sng',message=pubnub_object)
+
+        ####################################
         # bayes = TextBlob(tweet_trim, analyzer=NaiveBayesAnalyzer())
         # if abs(bayes.sentiment.p_pos-bayes.sentiment.p_neg) < .2:
         #     sentiment_bayes = "neutral"
@@ -206,61 +225,6 @@ class TweetStreamListener(StreamListener):
                 item_type = "image"
             else:
                 item_type = dict_data["entities"]["media"][0]["type"]
-
-        if retweeted_quoted_status:
-            user_id = dict_data["retweeted_status"]["quoted_status"]["user"]["id"]
-            screen_name = dict_data["retweeted_status"]["quoted_status"]["user"]["screen_name"]
-            location = dict_data["retweeted_status"]["quoted_status"]["user"]["location"]
-            followers_count = dict_data["retweeted_status"]["quoted_status"]["user"]["followers_count"]
-            friends_count = dict_data["retweeted_status"]["quoted_status"]["user"]["friends_count"]
-            statuses_count = dict_data["retweeted_status"]["quoted_status"]["user"]["statuses_count"]
-            date = time.strftime('%Y-%m-%dT%H:%M:%S', time.strptime(dict_data["retweeted_status"]["quoted_status"]["created_at"],'%a %b %d %H:%M:%S +0000 %Y'))
-        elif retweeted_status:
-            user_id = dict_data["retweeted_status"]["user"]["id"]
-            screen_name = dict_data["retweeted_status"]["user"]["screen_name"]
-            location = dict_data["retweeted_status"]["user"]["location"]
-            followers_count = dict_data["retweeted_status"]["user"]["followers_count"]
-            friends_count = dict_data["retweeted_status"]["user"]["friends_count"]
-            statuses_count = dict_data["retweeted_status"]["user"]["statuses_count"]
-            date = time.strftime('%Y-%m-%dT%H:%M:%S', time.strptime(dict_data["retweeted_status"]["created_at"],'%a %b %d %H:%M:%S +0000 %Y'))
-        elif quoted_status:
-            user_id = dict_data["quoted_status"]["user"]["id"]
-            screen_name = dict_data["quoted_status"]["user"]["screen_name"]
-            location = dict_data["quoted_status"]["user"]["location"]
-            followers_count = dict_data["quoted_status"]["user"]["followers_count"]
-            friends_count = dict_data["quoted_status"]["user"]["friends_count"]
-            statuses_count = dict_data["quoted_status"]["user"]["statuses_count"]
-            date = time.strftime('%Y-%m-%dT%H:%M:%S', time.strptime(dict_data["quoted_status"]["created_at"],'%a %b %d %H:%M:%S +0000 %Y'))
-        else:
-            user_id = dict_data["user"]["id"]
-            screen_name = dict_data["user"]["screen_name"]
-            location = dict_data["user"]["location"]
-            followers_count = dict_data["user"]["followers_count"]
-            friends_count = dict_data["user"]["friends_count"]
-            statuses_count = dict_data["user"]["statuses_count"]
-            date = time.strftime('%Y-%m-%dT%H:%M:%S', time.strptime(dict_data["created_at"],'%a %b %d %H:%M:%S +0000 %Y'))
-        item_url = 'https://twitter.com/' + str(screen_name) + '/status/' + str(id_str)
-
-
-        # check tweet is from verified candidate twitter account
-        print ('checking for match in: ' + str(CANDIDATE_USERNAMES[tweet_dict['contestant']]['UserName']))
-        if str(screen_name) in CANDIDATE_USERNAMES[tweet_dict['contestant']]['UserName']:
-            print ('VERIFIED USER')
-            verified = True
-        else:
-            verified = False
-
-        # for retweet growth
-        timedelta = datetime.datetime.utcnow()-datetime.datetime.strptime(date,'%Y-%m-%dT%H:%M:%S')
-        minutes_elapsed = td_to_minutes(timedelta)
-
-
-        # for group_item_id
-        url_record = db_session.query(Url).filter(Url.url==expanded_url).first()
-        try:
-            group_item_id = url_record.item_id
-        except AttributeError:
-            group_item_id = id_str
 
 
         try:
@@ -285,10 +249,10 @@ class TweetStreamListener(StreamListener):
                 date=date, # all time is stored at UTC
                 source="twitter",
                 sentiment=tweet_dict['sentiment'],
-                sentiment_textblob=sentiment_textblob,
+                sentiment_textblob=tweet_dict['tb_sentiment'],
                 # sentiment_bayes=sentiment_bayes,
-                polarity=TB.sentiment.polarity, # tbc
-                subjectivity=TB.sentiment.subjectivity, # tbc
+                polarity=tweet_dict['tb_polarity'], # tbc
+                subjectivity=tweet_dict['tb_subjectivity'], # tbc
                 favorite_count=favorite_count,
                 share_count=share_count,
                 user_id=u.id,
@@ -300,7 +264,6 @@ class TweetStreamListener(StreamListener):
 
         try:
             # words
-            words = clean_words(TB) # nlp_textblob.py
             for w in words:
                 if len(w)>100:
                     continue
@@ -328,43 +291,21 @@ class TweetStreamListener(StreamListener):
                 db_session.add(url)
                 db_session.commit()
 
-            # retweet growth
-            # rt = Retweet_growth(item_id=id_str,
-            #     date_time=now,
-            #     creation_date=date,
-            #     elapsed_time=minutes_elapsed,
-            #     share_count=share_count)
-            # db_session.add(rt)
-            # db_session.commit()
-
         except OperationalError:
             db_session.rollback()
 
 
 
-
         # rate limit for oembed is 180 per 15 minutes
         # https://dev.twitter.com/rest/reference/get/statuses/oembed
-        limits = api.rate_limit_status()
-        remain_oembed = limits['resources']['statuses']['/statuses/oembed']['remaining']
-        print (remain_oembed)
-
-
-        # call to trending tweets function
-        if 1:
-            pubnub_object = ({'sentiment': tweet_dict['sentiment'], 'group_item_id': group_item_id, 
-        'item_id': id_str, 'source': 'twitter', 'favorite_count': favorite_count,
-        'share_count': share_count, 'contestant': tweet_dict['contestant'], 
-        'item_url': item_url, 'date': date})
-            pubnub.publish(channel='pubnub-sng',message=pubnub_object)
-
-
-
+        # limits = api.rate_limit_status()
+        # remain_oembed = limits['resources']['statuses']['/statuses/oembed']['remaining']
+        # print (remain_oembed)
 
 
         # output key fields
-        print (str(screen_name) + '   My score: ' + str(tweet_dict['sentiment']) + '   TB score: ' + sentiment_textblob ) # + '   Bayes score: ' + sentiment_bayes)
-        print ('Tweet ID: ' + str(id_str))
+        print (str(screen_name) + '   My score: ' + str(tweet_dict['sentiment']) + '   TB score: ' + tweet_dict['tb_sentiment'] ) # + '   Bayes score: ' + sentiment_bayes)
+        print ('Tweet ID: ' + str(id_str) + '   ' + str(minutes_elapsed) + ' minutes ago')
         print ('Friends Count: ' + str(friends_count) + '    Followers Count: ' + str(followers_count))
         print ('Retweet Count: ' + str(share_count) + '    Favorite Count: ' + str(favorite_count))
         print (str(tweet))
@@ -379,14 +320,14 @@ class TweetStreamListener(StreamListener):
         print (str(status) + ' error with connection')
 
 if __name__ == '__main__':
-    # while 1:
-    #     try:
-    #         twitter_crawl()
-    #     except:
-    #         print ('Error. sleeping 5 seconds... zzz...')
-    #         time.sleep(5)
-    #         continue
-    twitter_crawl()
+    while 1:
+        try:
+            twitter_crawl()
+        except:
+            print ('Error. sleeping 5 seconds... zzz...')
+            time.sleep(5)
+            continue
+    # twitter_crawl()
 
 
 

@@ -40,7 +40,7 @@ def get_timeseries_data():
 				count(CASE WHEN date::date = current_date AND share_count = '0' THEN item_id ELSE NULL END) AS today
 		FROM item
 		GROUP BY contestant
-		HAVING sum(share_count)>10000
+		HAVING sum(share_count)>1000
 		ORDER BY sum(share_count) DESC''')
 	timeseries_data = array_to_dicts(db_session.execute(sql))
 

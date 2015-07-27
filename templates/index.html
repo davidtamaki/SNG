@@ -36,6 +36,7 @@
       }
 
       function renderAndPrepend(data) {
+        // TODO if container id already exists... delete!
         var containerID = '#' + data.sentiment + 'ItemData';
         $(containerID).prepend(renderItem(data));
         renderTweetEmbed(data);

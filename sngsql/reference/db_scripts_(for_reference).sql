@@ -1,83 +1,3 @@
-# popular urls
-SELECT url, count(url) AS count
-FROM url
-GROUP BY url
-HAVING count(url)>1
-ORDER BY count(url) DESC
-
-
-# avg sentiment by hashtag for each contestant
-select hashtag, 
-	round(cast(avg(polarity) as numeric),2) as polarity,
-	count(polarity) as total,
-	count(case when sentiment ='negative' then sentiment else null end) as negative,
-	count(case when sentiment ='neutral' then sentiment else null end) as neutral,
-	count(case when sentiment ='positive' then sentiment else null end) as positive,
-	sum(share_count) as total_retweet_count
-from item_hashtag
-join item on item_hashtag.item_id=item.id
-join hashtag on item_hashtag.hashtag_id=hashtag.id
-where contestant = 'Donald Trump'
-group by hashtag
-order by sum(share_count) desc
-
-
-# tweets with data on hashtags
-select contestant, sentiment, round(cast(polarity as numeric),2) as polarity, share_count, message
-from item_hashtag
-join item on item_hashtag.item_id=item.id
-join hashtag on item_hashtag.hashtag_id=hashtag.id
-where hashtag = 'Clinton'
-
-
-# average sentiment scores of contestants
-SELECT contestant,
-	ROUND(100*SUM(CASE WHEN sentiment_textblob ='negative' THEN share_count ELSE NULL END)/SUM(share_count),2) AS pc_negative_tb,
-	ROUND(100*SUM(CASE WHEN sentiment ='negative' THEN share_count ELSE NULL END)/SUM(share_count),2) AS pc_negative,
-	ROUND(100*SUM(CASE WHEN sentiment_textblob ='neutral' THEN share_count ELSE NULL END)/SUM(share_count),2) AS pc_neutral_tb,
-	ROUND(100*SUM(CASE WHEN sentiment ='neutral' THEN share_count ELSE NULL END)/SUM(share_count),2) AS pc_neutral,
-	ROUND(100*SUM(CASE WHEN sentiment_textblob ='positive' THEN share_count ELSE NULL END)/SUM(share_count),2) AS pc_positive_tb,
-	ROUND(100*SUM(CASE WHEN sentiment ='positive' THEN share_count ELSE NULL END)/SUM(share_count),2) AS pc_positive,
-	COUNT(share_count) AS tweet_count,
-	SUM(share_count) AS total_retweet_count
-FROM item
-WHERE date > (CURRENT_TIMESTAMP - INTERVAL '24 hours')
-GROUP BY contestant
-HAVING SUM(share_count) > 100
-ORDER BY pc_positive DESC
-
-
-# basic time series plot of retweet count
-select contestant,
-	sum(case when date::date = current_date then share_count else null end) as today,
-	sum(case when date::date = current_date-1 then share_count else null end) as yesterday,
-	sum(case when date::date = current_date-2 then share_count else null end) as twodaysago,
-	sum(case when date::date = current_date-3 then share_count else null end) as threedaysago,
-	sum(case when date::date = current_date-4 then share_count else null end) as fourdaysago,
-	sum(share_count) as total
-from item
-group by contestant
-having sum(share_count)>10000
-
-
-# important users with counts and no of posts
-select uid, screen_name, followers_count, friends_count, count(message)
-from "user"
-join item on item.user_id="user".id
-where followers_count > '20000'
-group by uid, screen_name, followers_count, friends_count
-order by count(message) desc
-
-
-# show all users with more than 1 post
-SELECT user_id, screen_name, followers_count,
-	COUNT(user_id) AS user_count 
-FROM item JOIN "user" ON item.user_id = "user".id
-GROUP BY user_id, screen_name, followers_count
-HAVING COUNT(user_id) > 1
-ORDER BY followers_count DESC
-
-
 # connect user and hashtag
 select screen_name,hashtag
 from user_hashtag
@@ -141,6 +61,88 @@ where message similar to '%\?%'
 select * from item
 WHERE date::date = '2015-07-13'
 WHERE date::date = current_date-1
+
+
+# popular urls
+SELECT url, count(url) AS count
+FROM url
+GROUP BY url
+HAVING count(url)>1
+ORDER BY count(url) DESC
+
+
+# tweets with data on hashtags
+select contestant, sentiment, round(cast(polarity as numeric),2) as polarity, share_count, message
+from item_hashtag
+join item on item_hashtag.item_id=item.id
+join hashtag on item_hashtag.hashtag_id=hashtag.id
+where hashtag = 'Clinton'
+
+
+# average sentiment scores of contestants
+SELECT contestant,
+	ROUND(100*SUM(CASE WHEN sentiment_textblob ='negative' THEN share_count ELSE NULL END)/SUM(share_count),2) AS pc_negative_tb,
+	ROUND(100*SUM(CASE WHEN sentiment ='negative' THEN share_count ELSE NULL END)/SUM(share_count),2) AS pc_negative,
+	ROUND(100*SUM(CASE WHEN sentiment_textblob ='neutral' THEN share_count ELSE NULL END)/SUM(share_count),2) AS pc_neutral_tb,
+	ROUND(100*SUM(CASE WHEN sentiment ='neutral' THEN share_count ELSE NULL END)/SUM(share_count),2) AS pc_neutral,
+	ROUND(100*SUM(CASE WHEN sentiment_textblob ='positive' THEN share_count ELSE NULL END)/SUM(share_count),2) AS pc_positive_tb,
+	ROUND(100*SUM(CASE WHEN sentiment ='positive' THEN share_count ELSE NULL END)/SUM(share_count),2) AS pc_positive,
+	COUNT(share_count) AS tweet_count,
+	SUM(share_count) AS total_retweet_count
+FROM item
+WHERE date > (CURRENT_TIMESTAMP - INTERVAL '24 hours')
+GROUP BY contestant
+HAVING SUM(share_count) > 100
+ORDER BY pc_positive DESC
+
+
+# polarity of each hashtag for each contestant
+SELECT contestant,
+	ROUND(100*SUM(CASE WHEN sentiment_textblob ='negative' THEN 1 ELSE NULL END)/COUNT(share_count),2) AS pc_negative_tb,
+	ROUND(100*SUM(CASE WHEN sentiment_textblob ='neutral' THEN 1 ELSE NULL END)/COUNT(share_count),2) AS pc_neutral_tb,
+	ROUND(100*SUM(CASE WHEN sentiment_textblob ='positive' THEN 1 ELSE NULL END)/COUNT(share_count),2) AS pc_positive_tb,
+	ROUND(100*SUM(CASE WHEN sentiment ='negative' THEN 1 ELSE NULL END)/COUNT(share_count),2) AS pc_negative,
+	ROUND(100*SUM(CASE WHEN sentiment ='neutral' THEN 1 ELSE NULL END)/COUNT(share_count),2) AS pc_neutral,
+	ROUND(100*SUM(CASE WHEN sentiment ='positive' THEN 1 ELSE NULL END)/COUNT(share_count),2) AS pc_positive,
+	COUNT(share_count) AS tweet_count,
+	SUM(share_count) AS total_retweet_count
+FROM item_hashtag
+JOIN item ON item_hashtag.item_id=item.id
+JOIN hashtag ON item_hashtag.hashtag_id=hashtag.id
+WHERE hashtag = 'stoprush'
+GROUP BY contestant
+ORDER BY pc_positive DESC
+
+
+# basic time series plot of retweet count
+select contestant,
+	sum(case when date::date = current_date then share_count else null end) as today,
+	sum(case when date::date = current_date-1 then share_count else null end) as yesterday,
+	sum(case when date::date = current_date-2 then share_count else null end) as twodaysago,
+	sum(case when date::date = current_date-3 then share_count else null end) as threedaysago,
+	sum(case when date::date = current_date-4 then share_count else null end) as fourdaysago,
+	sum(share_count) as total
+from item
+group by contestant
+having sum(share_count)>10000
+
+
+# important users with counts and no of posts
+select uid, screen_name, followers_count, friends_count, count(message)
+from "user"
+join item on item.user_id="user".id
+where followers_count > '20000'
+group by uid, screen_name, followers_count, friends_count
+order by count(message) desc
+
+
+# show all users with more than 1 post
+SELECT user_id, screen_name, followers_count,
+	COUNT(user_id) AS user_count 
+FROM item JOIN "user" ON item.user_id = "user".id
+GROUP BY user_id, screen_name, followers_count
+HAVING COUNT(user_id) > 1
+ORDER BY followers_count DESC
 
 
 # items with both Clinton and Trump (comparative sentences)

@@ -1,6 +1,7 @@
 from textblob import TextBlob
 from sngsql.words import *
 import re
+import string
 from config import *
 from helper import *
 
@@ -29,31 +30,16 @@ from helper import *
 
 
 # for loading into db
-# input TextBlob object, output list of words
-def clean_words(TB):
-    urls = re.findall('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', str(TB))
-    shoutouts_and_hashtags = [w[1:] for w in str(TB).split() if (w[0]=='@' or w[0]=='#')]
-    #shoutouts_and_hashtags = [str(TextBlob(s).words.singularize()) for s in shoutouts_and_hashtags]
-    # print ('shoutouts and hashtags: ' + str(shoutouts_and_hashtags))
-    #words = TB.words.singularize()
-    words = TB.words
-    
-    # remove short words, stop words, and urls
-    remove=[]
-    for u in urls:
-        remove.append([w for w in words if w in u])
-    remove = [u for url in remove for u in url]
-    stopwords = [w for w in words if w in STOP]
-    remove = remove + stopwords + shoutouts_and_hashtags
-    # print (remove)
-
-    words = [w.lower() for w in words if len(w)>2 and w not in (remove)] 
-    # print (words)
+# input dirty words list(punctuation and urls removed), output final words list
+def clean_words(words_input,hashtags):
+    # shoutouts_and_hashtags = [w for w in words_input if (w[0]=='@' or w[0]=='#')]
+    remove = [w for w in words_input if binarySearch(STOP, w.lower())] + hashtags
+    words = [w for w in words_input.lower() if len(w)>2 and w not in remove] 
     return words
 
 
 # clean tweet before applying sentiment analysis
-# input dirty string, output dictionary for (sentiment, team, hashtags, urls, and contestant)
+# input dirty string, output dictionary for nlp analysis results
 def analyse_tweet(tweetstring,expanded_url):
     print ('expanded_urls: ' + str(expanded_url))
 
@@ -67,21 +53,38 @@ def analyse_tweet(tweetstring,expanded_url):
     for word in tweetstring.split():
         if word[0] == '#':
             hashtags.append(word[1:].lower())
+    hashtags = [h.translate(str.maketrans("", "", string.punctuation)) for h in hashtags]
     print ('hashtags: ' + str(hashtags))
+
+    #remove punctuation
+    tweetstring = tweetstring.translate(str.maketrans("", "", string.punctuation))
+
+    # tb sentiment
+    TB = TextBlob(tweetstring)
+    if TB.sentiment.polarity < 0:
+        tb_sentiment = "negative"
+    elif TB.sentiment.polarity == 0:
+        tb_sentiment = "neutral"
+    else:
+        tb_sentiment = "positive"
+
+    # d_hashtags = False
+    # r_hashtags = False
     if hashtags:
         for h in hashtags:
-             # if hashtag is xyz2016, set instant sentiment and return
+            # if h in DEMOCRAT:
+            #     d_hashtags = True
+            # if h in REPBLICAN:
+            #     r_hashtags = True
             if h in CANDIDATE_HASHTAGS:
                 contestant = CANDIDATE_HASHTAGS[h]['Name']
                 sentiment = CANDIDATE_HASHTAGS[h]['Sentiment']
                 team = CANDIDATE_USERNAMES[contestant]['Party']
                 print ('Candidate Hashtag identified: ' + str(h))
-                print (contestant)
-                return ({'sentiment':sentiment, 'team':team, 
-                    'hashtags':hashtags, 'urls':urls, 'contestant':contestant })
+                return ({'sentiment':sentiment, 'team':team, 'hashtags':hashtags, 
+                    'urls':urls, 'contestant':contestant, 'tb_sentiment': tb_sentiment, 
+                    'tb_subjectivity': TB.sentiment.polarity, 'tb_polarity': TB.sentiment.polarity, 'tb_words': TB.words})
     
-    TB = TextBlob(tweetstring)
-
     # tag contestant
     contestant = None
     for x in SEARCH_TERM:
@@ -106,37 +109,43 @@ def analyse_tweet(tweetstring,expanded_url):
     if contestant is None:
         return ({'contestant': None})
 
-    # need to compare multiple candidates in message
-
-    # set team to candidate's party
     team = CANDIDATE_USERNAMES[contestant]['Party']
 
+    # if d_hashtags or r_hashtags:
+    #     print ('Political party candidate found')
+    #     if team = 'Democrat' and d_hashtags:
+    #         sentiment = 'positive'
+    #     elif team = 'Democrat' and r_hashtags:
+    #         sentiment = 'negative'
+    #     elif team = 'Republican' and d_hashtags:
+    #         sentiment = 'negative'
+    #     elif team = 'Republican' and r_hashtags:
+    #         sentiment = 'positive'
+    #     return ({'sentiment':sentiment, 'team':team, 'hashtags':hashtags, 
+    #         'urls':urls, 'contestant':contestant, 'tb_sentiment': tb_sentiment, 
+    #         'tb_subjectivity': TB.sentiment.polarity, 'tb_polarity': TB.sentiment.polarity, 'tb_words': TB.words})
+
+
     # sentiment analysis
+    # length = len(TB.words)
     p, n = 0, 0
     negation_rule = False
     for word in TB.words:
-        # words strips out emoticons (only matches emoji)
-        # if word in POS_EMOJI:
         if word.lower() in NEGATION:
-            # print ('negation word: ' + word)
             negation_rule = True
             continue
         if binarySearch(POSITIVE, word.lower()):
             if negation_rule == True:
-                # print ('negation on pos: ' + word)
                 n+=1
                 negation_rule = False
                 continue
-            # print ('pos: ' + word)
             p+=1
             continue
         elif binarySearch(NEGATIVE, word.lower()):
             if negation_rule == True:
-                # print ('negation on neg: ' + word)
                 p+=1
                 negation_rule = False
                 continue
-            # print ('neg: ' + word)
             n+=1
             continue
         else:
@@ -150,8 +159,10 @@ def analyse_tweet(tweetstring,expanded_url):
     else:
         sentiment='neutral'
 
-    return ({'sentiment':sentiment, 'team':team,
-        'hashtags':hashtags, 'urls':urls, 'contestant':contestant })
+
+    return ({'sentiment':sentiment, 'team':team, 'hashtags':hashtags, 
+        'urls':urls, 'contestant':contestant, 'tb_sentiment': tb_sentiment, 
+        'tb_subjectivity': TB.sentiment.polarity, 'tb_polarity': TB.sentiment.polarity, 'tb_words': TB.words})
 
 
 
