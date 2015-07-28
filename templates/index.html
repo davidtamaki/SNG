@@ -16,7 +16,8 @@
       }
 
       function renderItem(data) {
-        var itemString = ("<li>Sentiment: " + data.sentiment +
+        var itemString = ('<li id="twitter_li_' + data.item_id + 
+          '">Sentiment: ' + data.sentiment +
           " Favourites: " + data.favorite_count + 
           " Shared: " + data.share_count + 
           '<div id="twitter_' + data.item_id + '"></div>' +
@@ -35,9 +36,15 @@
         );
       }
 
+
       function renderAndPrepend(data) {
-        // TODO if container id already exists... delete!
+        // 3 containers, pos, neu, neg (e.g. #positiveItemData)
         var containerID = '#' + data.sentiment + 'ItemData';
+        
+        //remove li if already exists (bring to top)
+        if($(containerID + ' #twitter_li_' + data.item_id).length) {
+          $(containerID + ' #twitter_li_' + data.item_id).remove();
+        }
         $(containerID).prepend(renderItem(data));
         renderTweetEmbed(data);
       }
@@ -108,15 +115,22 @@
 
       <div style="width: 100%;">
 
-         <div style="float:left; width: 50%">
-          Top 10 Positive Items:<br />
+         <div style="float:left; width: 33%">
+          Top Positive Items:<br />
           <ul id="positiveItemData">
 
           </ul>
          </div> <!-- end div left -->
 
-         <div style="float:right; width: 50%">
-          Top 10 Negative Items:<br />
+         <div style="float:left; width: 33%">
+          Top Neutral Items:<br />
+          <ul id="neutralItemData">
+          </ul>          
+         </div> <!-- end div center -->
+
+
+         <div style="float:left; width: 33%">
+          Top Negative Items:<br />
           <ul id="negativeItemData">
           </ul>          
          </div> <!-- end div right -->

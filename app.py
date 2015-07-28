@@ -4,7 +4,9 @@ from flask.ext.sqlalchemy import SQLAlchemy
 from sngsql.database import db_session
 from sngsql.model import Hashtag, Item, User, Word, Url, Retweet_growth
 from sqlalchemy import and_, distinct
-from sqlalchemy.sql import exists
+from sqlalchemy.sql import exists, update
+from sqlalchemy.exc import OperationalError
+from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 from flask.ext.cache import Cache
 import json, requests, datetime
 from datetime import date, timedelta
@@ -130,9 +132,22 @@ def root():
 			ORDER BY share_count DESC
 			LIMIT 10;
 
+			CREATE TEMPORARY TABLE neu AS
+			SELECT contestant, date, item_id, group_item_id, favorite_count, share_count, item_url, sentiment, source
+			FROM item WHERE item_id IN
+				(SELECT DISTINCT ON (group_item_id) item_id
+				FROM item
+				WHERE sentiment = 'neutral'
+				AND date > (CURRENT_TIMESTAMP - interval '24 hours')
+				ORDER BY group_item_id)
+			ORDER BY share_count DESC
+			LIMIT 10;
+
 			SELECT * FROM pos
 			UNION ALL
-			SELECT * FROM neg;''')
+			SELECT * FROM neg
+			UNION ALL
+			SELECT * FROM neu;''')
 	tweet_data = array_to_dicts(db_session.execute(sql))
 	print (tweet_data)
 
@@ -181,6 +196,82 @@ def get_candidate(c,p):
 		total=len(results), search=False, record_name='item')
 	return render_template('source.html',css_framework='bootstrap',
 		jsondata_left=response_left,pagination=pagination)
+
+
+# saving data into db
+@app.route('/api/input_data/', methods=['POST'])
+def input():
+    req = json.loads(request.data.decode())
+
+    try:
+        u = db_session.query(User).filter_by(uid=str(req['uid'])).one()
+    except NoResultFound:
+        u = User(uid=req['uid'],
+                screen_name=req['screen_name'],
+                followers_count=req['followers_count'],
+                friends_count=req['friends_count'],
+                statuses_count=req['statuses_count'],
+                rank=req['rank'])
+        db_session.add(u)
+        db_session.commit()
+
+    tw = Item(message=req['message'],
+            contestant=req['contestant'],
+            item_id=req['item_id'],
+            group_item_id=req['group_item_id'], # for expanded url
+            item_type=req['item_type'],
+            item_url=req['item_url'],
+            location=req['location'],
+            date=req['date'], # all time is stored at UTC
+            source=req['source'],
+            sentiment=req['sentiment'],
+            sentiment_textblob=req['sentiment_textblob'],
+            # sentiment_bayes=sentiment_bayes,
+            polarity=req['polarity'], # tbc
+            subjectivity=req['subjectivity'], # tbc
+            favorite_count=req['favorite_count'],
+            share_count=req['share_count'],
+            user_id=u.id,
+            verified_user=req['verified_user'],
+            team=req['team'],
+            data=req['data'])
+    db_session.add(tw)
+    db_session.commit()
+
+    try:
+        # words
+        for w in req['words']:
+            if len(w)>100:
+                continue
+            w_obj = Word(word=w)
+            db_session.add(w_obj)
+            db_session.commit()
+            tw.words.append(w_obj)
+            u.words.append(w_obj)
+
+        # hashtags
+        for t in req['hashtags']:
+            if len(t)>100:
+                continue
+            t_obj = Hashtag(hashtag=t)
+            db_session.add(t_obj)
+            db_session.commit()
+            tw.hashtags.append(t_obj)
+            u.hashtags.append(t_obj)
+
+        # url
+        if req['expanded_url'] and len(req['expanded_url'])<200:
+            url = Url(item_id=req['item_id'],
+                url=req['expanded_url'])
+            db_session.add(url)
+            db_session.commit()
+
+    except OperationalError:
+        db_session.rollback()
+
+    print (tw.id)
+    return str(tw.id)
+
 
 
 if __name__ == '__main__':

@@ -1,4 +1,4 @@
-import json, time, re, datetime, math
+import json, time, re, datetime, math, requests
 from tweepy.streaming import StreamListener
 from tweepy import OAuthHandler, Stream, API
 from textblob import TextBlob
@@ -13,6 +13,8 @@ from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 from pubnub import Pubnub
 from config import *
 from helper import *
+
+import urllib.request
 
 api = None
 PUBNUB_ON = True
@@ -226,81 +228,50 @@ class TweetStreamListener(StreamListener):
             else:
                 item_type = dict_data["entities"]["media"][0]["type"]
 
+        item_data = ({'uid':user_id,
+            'screen_name':screen_name,
+            'followers_count':followers_count,
+            'friends_count':friends_count,
+            'statuses_count':statuses_count,
+            'rank': 1, 
+            'message': tweet,
+            'contestant': tweet_dict['contestant'],
+            'item_id': id_str,
+            'group_item_id': group_item_id,
+            'item_type': item_type,
+            'item_url': item_url,
+            'location': location,
+            'date': date, 
+            'source': "twitter",
+            'sentiment': tweet_dict['sentiment'],
+            'sentiment_textblob': tweet_dict['tb_sentiment'],
+            'polarity': tweet_dict['tb_polarity'],
+            'subjectivity': tweet_dict['tb_subjectivity'], 
+            'favorite_count': favorite_count,
+            'share_count': share_count,
+            'verified_user': verified,
+            'team': tweet_dict['team'],
+            'data': json.dumps(data),
+            'words': words,
+            'hashtags': tweet_dict['hashtags'],
+            'expanded_url': expanded_url})
 
-        try:
-            u = db_session.query(User).filter_by(uid=str(user_id)).one()
-        except NoResultFound:
-            u = User(uid=user_id,
-                    screen_name=screen_name,
-                    followers_count=followers_count,
-                    friends_count=friends_count,
-                    statuses_count=statuses_count,
-                    rank=1)
-            db_session.add(u)
-            db_session.commit()
-
-        tw = Item(message=tweet,
-                contestant=tweet_dict['contestant'],
-                item_id=id_str,
-                group_item_id=group_item_id, # for expanded url
-                item_type=item_type,
-                item_url=item_url,
-                location=location,
-                date=date, # all time is stored at UTC
-                source="twitter",
-                sentiment=tweet_dict['sentiment'],
-                sentiment_textblob=tweet_dict['tb_sentiment'],
-                # sentiment_bayes=sentiment_bayes,
-                polarity=tweet_dict['tb_polarity'], # tbc
-                subjectivity=tweet_dict['tb_subjectivity'], # tbc
-                favorite_count=favorite_count,
-                share_count=share_count,
-                user_id=u.id,
-                verified_user=verified,
-                team=tweet_dict['team'],
-                data=json.dumps(data))
-        db_session.add(tw)
-        db_session.commit()
-
-        try:
-            # words
-            for w in words:
-                if len(w)>100:
-                    continue
-                w_obj = Word(word=w)
-                db_session.add(w_obj)
-                db_session.commit()
-                tw.words.append(w_obj)
-                u.words.append(w_obj)
-
-            # hashtags
-            if tweet_dict['hashtags']:
-                for t in tweet_dict['hashtags']:
-                    if len(t)>100:
-                        continue
-                    t_obj = Hashtag(hashtag=t)
-                    db_session.add(t_obj)
-                    db_session.commit()
-                    tw.hashtags.append(t_obj)
-                    u.hashtags.append(t_obj)
-
-            # url
-            if expanded_url and len(expanded_url)<200:
-                url = Url(item_id=id_str,
-                    url=expanded_url)
-                db_session.add(url)
-                db_session.commit()
-
-        except OperationalError:
-            db_session.rollback()
+        headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
+        r = requests.post(URL + 'api/input_data/', data=json.dumps(item_data), headers=headers)
+        print (r)
+        print(r.text)
 
 
 
         # rate limit for oembed is 180 per 15 minutes
         # https://dev.twitter.com/rest/reference/get/statuses/oembed
+        # t = time.process_time()
         # limits = api.rate_limit_status()
         # remain_oembed = limits['resources']['statuses']['/statuses/oembed']['remaining']
         # print (remain_oembed)
+        # elapsed_time = time.process_time() - t
+        # print ('api status check (sec): ' + str(elapsed_time) + '\n')
+
 
 
         # output key fields
