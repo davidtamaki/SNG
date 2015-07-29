@@ -5,6 +5,7 @@
     <link rel="stylesheet" href="{{url_for('static', filename='jquery.embed.css') }}"/>
     <link rel="stylesheet" href="{{url_for('static', filename='jquery.oembed.css') }}"/>
     <link rel="stylesheet" href="{{url_for('static', filename='c3.min.css') }}"/>
+    <link rel="stylesheet" href="{{url_for('static', filename='animations.css') }}"/>
 
     <!-- For PubNub -->
     <script type=text/javascript src="{{url_for('static', filename='pubnub-3.7.13.min.js') }}"></script>
@@ -17,9 +18,9 @@
 
       function renderItem(data) {
         var itemString = ('<li id="twitter_li_' + data.item_id + 
-          '">Sentiment: ' + data.sentiment +
-          " Favourites: " + data.favorite_count + 
+          '" class="fadeIn"> ID: ' + data.item_id + ' <br> ' +
           " Shared: " + data.share_count + 
+          " Favourites: " + data.favorite_count + 
           '<div id="twitter_' + data.item_id + '"></div>' +
         "</li>")
         console.log(itemString)
@@ -31,7 +32,7 @@
           data.item_id,
           document.getElementById('twitter_'+data.item_id),
           {
-            // theme: 'dark'
+            theme: 'light'
           }
         );
       }
@@ -40,10 +41,10 @@
       function renderAndPrepend(data) {
         // 3 containers, pos, neu, neg (e.g. #positiveItemData)
         var containerID = '#' + data.sentiment + 'ItemData';
-        
+        var listItemID = '#twitter_li_' + data.item_id;
         //remove li if already exists (bring to top)
-        if($(containerID + ' #twitter_li_' + data.item_id).length) {
-          $(containerID + ' #twitter_li_' + data.item_id).remove();
+        if($(containerID + ' ' + listItemID).length) {
+          $(containerID + ' ' + listItemID).remove();
         }
         $(containerID).prepend(renderItem(data));
         renderTweetEmbed(data);
@@ -106,31 +107,31 @@
         <h3 class="text-muted">Social News Generator: Trending Thoughts</h3>
       </div>
 
-      <div id="chart_timeseries"></div>
+      <div id="chart_timeseries" class="pullUp"></div>
       <p></p>
 
       My Sentiment Classifier<br />
-      <div id="chart_bar"></div>
+      <div id="chart_bar" class="pullUp"></div>
       <p></p>
 
       <div style="width: 100%;">
 
          <div style="float:left; width: 33%">
-          Top Positive Items:<br />
+          Trending Positive Items:<br />
           <ul id="positiveItemData">
 
           </ul>
          </div> <!-- end div left -->
 
          <div style="float:left; width: 33%">
-          Top Neutral Items:<br />
+          Trending Neutral Items:<br />
           <ul id="neutralItemData">
           </ul>          
          </div> <!-- end div center -->
 
 
          <div style="float:left; width: 33%">
-          Top Negative Items:<br />
+          Trending Negative Items:<br />
           <ul id="negativeItemData">
           </ul>          
          </div> <!-- end div right -->
@@ -207,13 +208,6 @@
           }
         }
       });
-
-    setTimeout(function () {
-      chart_ts.load({
-        data: {{trump_data|safe}}
-      });
-    }, 2000);
-
     </script>
 
   </body>

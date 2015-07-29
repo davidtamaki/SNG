@@ -46,22 +46,15 @@ def get_timeseries_data():
 		ORDER BY sum(share_count) DESC''')
 	timeseries_data = array_to_dicts(db_session.execute(sql))
 
-	tp_data = {}
 	ts_data = {}
-	tp_data['json'] = {}
 	ts_data['json'] = {}
 	ts_data['x'] = 'x'
 	for row in timeseries_data:
-		if row['contestant'] == 'Donald Trump':
-			tp_data['json'][row['contestant']] = [row['fourdaysago'],row['threedaysago'],row['twodaysago'],row['yesterday'],row['today']]
-		else:
-			ts_data['json'][row['contestant']] = [row['fourdaysago'],row['threedaysago'],row['twodaysago'],row['yesterday'],row['today']]
+		ts_data['json'][row['contestant']] = [row['fourdaysago'],row['threedaysago'],row['twodaysago'],row['yesterday'],row['today']]
 	ts_data['json']['x'] = [str(date.today()-timedelta(4)),str(date.today()-timedelta(3)),str(date.today()-timedelta(2)),str(date.today()-timedelta(1)),str(date.today())]
 	timeseries_data = json.dumps(ts_data)
-	trump_data = json.dumps(tp_data)
 	print (timeseries_data)
-	print (trump_data)
-	return ({'timeseries_data': timeseries_data, 'trump_data': trump_data})
+	return ({'timeseries_data': timeseries_data})
 
 def get_barchart_data():
 	sql = (
@@ -89,8 +82,8 @@ def get_barchart_data():
 		b_data['json']['neutral'].append(row['pc_neutral'])
 		b_data['json']['positive'].append(row['pc_positive'])
 		bar_categories.append(row['contestant'])
-	b_data['groups'] = [['negative','neutral','positive']]
-	b_data['order'] = ['negative','neutral','positive']
+	b_data['groups'] = [['negative','positive']]
+	b_data['order'] = None
 	b_data['colors'] = {'positive': '#2ca02c','neutral': '#1f77b4','negative': '#ff7f0e'}
 	bar_data = json.dumps(b_data)
 	print (bar_data)
@@ -119,7 +112,7 @@ def root():
 				AND date > (CURRENT_TIMESTAMP - interval '24 hours')
 				ORDER BY group_item_id)
 			ORDER BY share_count DESC
-			LIMIT 10;
+			LIMIT 30;
 
 			CREATE TEMPORARY TABLE neg AS
 			SELECT contestant, date, item_id, group_item_id, favorite_count, share_count, item_url, sentiment, source
@@ -130,7 +123,7 @@ def root():
 				AND date > (CURRENT_TIMESTAMP - interval '24 hours')
 				ORDER BY group_item_id)
 			ORDER BY share_count DESC
-			LIMIT 10;
+			LIMIT 30;
 
 			CREATE TEMPORARY TABLE neu AS
 			SELECT contestant, date, item_id, group_item_id, favorite_count, share_count, item_url, sentiment, source
@@ -141,7 +134,7 @@ def root():
 				AND date > (CURRENT_TIMESTAMP - interval '24 hours')
 				ORDER BY group_item_id)
 			ORDER BY share_count DESC
-			LIMIT 10;
+			LIMIT 30;
 
 			SELECT * FROM pos
 			UNION ALL
@@ -154,15 +147,13 @@ def root():
 	# for charts
 	timeseries_result = get_timeseries_data()
 	timeseries_data = timeseries_result['timeseries_data']
-	trump_data = timeseries_result['trump_data']
 	bar_result = get_barchart_data()
 	bar_data = bar_result['bar_data']
 	bar_categories = bar_result['bar_categories']
 
 
 	return render_template('index.html',tweet_data=tweet_data,
-		timeseries_data=timeseries_data,trump_data=trump_data,
-		bar_data=bar_data,bar_categories=bar_categories)
+		timeseries_data=timeseries_data,bar_data=bar_data,bar_categories=bar_categories)
 
 
 #source type (e.g. twitter or instagram)
@@ -183,19 +174,19 @@ def get_source(s,p):
 # candidate last name (e.g. Trump or Clinton)
 @app.route('/candidate/<c>/item/<int:p>/', methods=['GET'])
 def get_candidate(c,p):
-	results = (db_session.query(Item).filter(and_(
-		Item.contestant.like('%'+c.title()+'%'),Item.sentiment=='positive')).
-		order_by(Item.share_count.desc()).all())
-	response_left = results[10*(p-1):10*p]
+	sql = ('''SELECT contestant, date, item_id, group_item_id, favorite_count, share_count, item_url, sentiment, source
+			FROM item WHERE contestant ILIKE ('%{0}%')
+			ORDER BY share_count DESC'''.format(c))
+	print (sql)
+	results = array_to_dicts(db_session.execute(sql))
+	tweet_data = results[30*(p-1):30*p]
+	print (tweet_data)
 	print('Total %d hits found.' % len(results))
-	for h in response_left:
-		h.polarity = round(h.polarity,2)
-		h.subjectivity = round(h.subjectivity,2)
 
-	pagination = Pagination(page=p, href= URL + 'candidate/' + c + '/item/{0}/',
-		total=len(results), search=False, record_name='item')
+	pagination = Pagination(page=p, href= URL + 'candidate/' + c + '/item/{0}/',per_page=30,
+		total=int(len(results)/3), search=False, record_name='item',format_total=True,format_number=True)
 	return render_template('source.html',css_framework='bootstrap',
-		jsondata_left=response_left,pagination=pagination)
+		tweet_data=tweet_data,pagination=pagination)
 
 
 # saving data into db

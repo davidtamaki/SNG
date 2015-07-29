@@ -17,7 +17,6 @@ from helper import *
 import urllib.request
 
 api = None
-PUBNUB_ON = True
 
 # pubnub functions
 pubnub = Pubnub(publish_key=pubnub_publish_key, subscribe_key=pubnub_subscribe_key)
@@ -160,7 +159,8 @@ class TweetStreamListener(StreamListener):
             record.favorite_count=favorite_count
             record.share_count=share_count
             db_session.flush()
-            if share_count>minimum_rt and PUBNUB_ON:
+            if 1:
+            # if share_count>minimum_rt:
                 print ('PUBLISHING TO PUBNUB!')
                 pubnub_object = ({'sentiment': record.sentiment, 'group_item_id': record.group_item_id, 
                     'item_id': id_str, 'source': 'twitter', 'favorite_count': favorite_count,
@@ -199,7 +199,8 @@ class TweetStreamListener(StreamListener):
             verified = False
 
         # publish to pubnub
-        if (share_count>minimum_rt or verified) and PUBNUB_ON:
+        # if (share_count>minimum_rt or verified):
+        if 1:
             print ('PUBLISHING TO PUBNUB!')
             pubnub_object = ({'sentiment': tweet_dict['sentiment'], 'group_item_id': group_item_id, 
         'item_id': id_str, 'source': 'twitter', 'favorite_count': favorite_count,
