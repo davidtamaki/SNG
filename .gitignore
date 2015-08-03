@@ -1,4 +1,5 @@
 *.pyc
+*.rdb
 *.xls
 *.csv
 .DS_Store

@@ -1,40 +1,20 @@
 from textblob import TextBlob
-from sngsql.words import *
+from words import *
 import re
 import string
 from config import *
 from helper import *
 
 
-# added emphasis to scoring
-# input TextBlob object, output revised polarity score
-# def emphasis(TB):
-#     # print (TB.sentiment.polarity) 
-#     if TB.sentiment.polarity!=0:
-#         points=0
-#         for w in TB.words:
-#             if w.isupper():
-#                 # print ('upper case word found: ' + str(w))
-#                 points+=1
-#             if consecutive(w):
-#                 # print ('found >3 consecutive chars.. ' + str(w))
-#                 points+=1
-
-#         # print (str(points))
-#         polarity = TB.sentiment.polarity * min(2,(1 + (points/10)))
-#         if abs(polarity)>1:
-#             polarity = polarity / abs(polarity)
-#         return polarity
-#     else:
-#         return 0
-
 
 # for loading into db
 # input dirty words list(punctuation and urls removed), output final words list
-def clean_words(words_input,hashtags):
-    # shoutouts_and_hashtags = [w for w in words_input if (w[0]=='@' or w[0]=='#')]
-    remove = [w for w in words_input if binarySearch(STOP, w.lower())] + hashtags
-    words = [w for w in words_input.lower() if len(w)>2 and w not in remove] 
+def clean_words(words_input,hashtags,shoutouts): 
+    remove = [w.lower() for w in words_input if binarySearch(STOP, w.lower())] + hashtags + shoutouts
+    words = [w for w in words_input.lower() if w not in remove]
+    words = [consecutive(w) for w in words]
+    words = [w for w in words if len(w)>2]
+    print ('words: ' + str(words))
     return words
 
 
@@ -48,13 +28,18 @@ def analyse_tweet(tweetstring,expanded_url):
     for u in urls:
         tweetstring = tweetstring.replace(u,'')
 
-    # hashtag analysis
+   # hashtag and shoutout analysis
     hashtags = []
+    shoutouts = []
     for word in tweetstring.split():
         if word[0] == '#':
             hashtags.append(word[1:].lower())
+        if word[0] == '@':
+            shoutouts.append(word[1:].lower())
     hashtags = [h.translate(str.maketrans("", "", string.punctuation)) for h in hashtags]
+    shoutouts = [s.translate(str.maketrans("", "", string.punctuation)) for s in shoutouts]
     print ('hashtags: ' + str(hashtags))
+    print ('shoutouts: ' + str(shoutouts))
 
     #remove punctuation
     tweetstring = tweetstring.translate(str.maketrans("", "", string.punctuation))
@@ -68,20 +53,15 @@ def analyse_tweet(tweetstring,expanded_url):
     else:
         tb_sentiment = "positive"
 
-    # d_hashtags = False
-    # r_hashtags = False
+    # auto-score for key hashtags
     if hashtags:
         for h in hashtags:
-            # if h in DEMOCRAT:
-            #     d_hashtags = True
-            # if h in REPBLICAN:
-            #     r_hashtags = True
             if h in CANDIDATE_HASHTAGS:
                 contestant = CANDIDATE_HASHTAGS[h]['Name']
                 sentiment = CANDIDATE_HASHTAGS[h]['Sentiment']
                 team = CANDIDATE_USERNAMES[contestant]['Party']
                 print ('Candidate Hashtag identified: ' + str(h))
-                return ({'sentiment':sentiment, 'team':team, 'hashtags':hashtags, 
+                return ({'sentiment':sentiment, 'team':team, 'hashtags':hashtags, 'shoutouts': shoutouts,
                     'urls':urls, 'contestant':contestant, 'tb_sentiment': tb_sentiment, 
                     'tb_subjectivity': TB.sentiment.polarity, 'tb_polarity': TB.sentiment.polarity, 'tb_words': TB.words})
     
@@ -108,26 +88,10 @@ def analyse_tweet(tweetstring,expanded_url):
                 break
     if contestant is None:
         return ({'contestant': None})
-
     team = CANDIDATE_USERNAMES[contestant]['Party']
-
-    # if d_hashtags or r_hashtags:
-    #     print ('Political party candidate found')
-    #     if team = 'Democrat' and d_hashtags:
-    #         sentiment = 'positive'
-    #     elif team = 'Democrat' and r_hashtags:
-    #         sentiment = 'negative'
-    #     elif team = 'Republican' and d_hashtags:
-    #         sentiment = 'negative'
-    #     elif team = 'Republican' and r_hashtags:
-    #         sentiment = 'positive'
-    #     return ({'sentiment':sentiment, 'team':team, 'hashtags':hashtags, 
-    #         'urls':urls, 'contestant':contestant, 'tb_sentiment': tb_sentiment, 
-    #         'tb_subjectivity': TB.sentiment.polarity, 'tb_polarity': TB.sentiment.polarity, 'tb_words': TB.words})
 
 
     # sentiment analysis
-    # length = len(TB.words)
     p, n = 0, 0
     negation_rule = False
     for word in TB.words:
@@ -160,9 +124,9 @@ def analyse_tweet(tweetstring,expanded_url):
         sentiment='neutral'
 
 
-    return ({'sentiment':sentiment, 'team':team, 'hashtags':hashtags, 
+    return ({'sentiment':sentiment, 'team':team, 'hashtags':hashtags, 'shoutouts': shoutouts,
         'urls':urls, 'contestant':contestant, 'tb_sentiment': tb_sentiment, 
-        'tb_subjectivity': TB.sentiment.polarity, 'tb_polarity': TB.sentiment.polarity, 'tb_words': TB.words})
+        'tb_subjectivity': TB.sentiment.subjectivity, 'tb_polarity': TB.sentiment.polarity, 'tb_words': TB.words})
 
 
 

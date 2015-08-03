@@ -11,6 +11,8 @@ from sqlalchemy.sql import exists, update
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 from pubnub import Pubnub
+from collections import deque
+from words import *
 from config import *
 from helper import *
 
@@ -44,8 +46,11 @@ def twitter_crawl():
     # create instance of the tweepy stream
     stream = Stream(auth, listener)
     # api used for checking rate limits
-    global api 
+    global api
     api = API(auth)
+    # for duplication tweet check
+    global queue
+    queue = deque([])
     # search twitter for keywords
     stream.filter(languages=['en'], track=SEARCH_TERM)
 
@@ -140,6 +145,16 @@ class TweetStreamListener(StreamListener):
             date = time.strftime('%Y-%m-%dT%H:%M:%S', time.strptime(dict_data["created_at"],'%a %b %d %H:%M:%S +0000 %Y'))
         item_url = 'https://twitter.com/' + str(screen_name) + '/status/' + str(id_str)
 
+
+        #queue storing previous 200 tweets for duplication check
+        if tweet in queue:
+            print ('Tweet already processed, repeat found in queue, skip.' + '\n')
+            return
+        queue.append(tweet)
+        if len(queue)>200:
+            queue.popleft()
+
+
         # minumum threshold by elapsed time
         timedelta = datetime.datetime.utcnow()-datetime.datetime.strptime(date,'%Y-%m-%dT%H:%M:%S')
         minutes_elapsed = td_to_minutes(timedelta)
@@ -149,7 +164,11 @@ class TweetStreamListener(StreamListener):
             minimum_rt =  80*math.log(minutes_elapsed)-180
         else:
             minimum_rt = 233
+        important = 'f'
+        if share_count>minimum_rt:
+            important = 't'
 
+        # check if item already stored
         try:
             record = db_session.query(Item).filter(Item.item_id==id_str).one()
             if quoted_status or retweeted_quoted_status:
@@ -159,16 +178,16 @@ class TweetStreamListener(StreamListener):
             record.favorite_count=favorite_count
             record.share_count=share_count
             db_session.flush()
-            if 1:
-            # if share_count>minimum_rt:
-                print ('PUBLISHING TO PUBNUB!')
-                pubnub_object = ({'sentiment': record.sentiment, 'group_item_id': record.group_item_id, 
+
+            print ('PUBLISHING TO PUBNUB!')
+            pubnub_object = ({'sentiment': record.sentiment, 'group_item_id': record.group_item_id, 
                     'item_id': id_str, 'source': 'twitter', 'favorite_count': favorite_count,
                     'share_count': share_count, 'contestant': record.contestant, 
-                    'item_url': item_url, 'date': date})
-                pubnub.publish(channel='pubnub-sng',message=pubnub_object)
+                    'item_url': item_url, 'date': date, 'important': important})
+            pubnub.publish(channel='pubnub-sng',message=pubnub_object)
             print ('Retweet caught. Updated favorite and share count record. ID: ' + str(id_str) + '\n')
             return
+
         except NoResultFound:
             pass
         
@@ -178,12 +197,14 @@ class TweetStreamListener(StreamListener):
             expanded_url = str(dict_data["entities"]["urls"][0]["expanded_url"]).lower()
         except IndexError:
             expanded_url = None
+
         tweet_dict = analyse_tweet(tweet,expanded_url)
         if tweet_dict['contestant'] is None:
             print ('CONTESTANT NOT FOUND' + '\n')
             return
-        words = clean_words(tweet_dict['tb_words'],tweet_dict['hashtags'])
-        
+        words = clean_words(tweet_dict['tb_words'],tweet_dict['hashtags'],tweet_dict['shoutouts'])
+
+
         # for group_item_id
         url_record = db_session.query(Url).filter(Url.url==expanded_url).first()
         try:
@@ -191,22 +212,22 @@ class TweetStreamListener(StreamListener):
         except AttributeError:
             group_item_id = id_str
 
+
         # check tweet is from verified candidate twitter account
         if str(screen_name) in CANDIDATE_USERNAMES[tweet_dict['contestant']]['UserName']:
             print ('VERIFIED USER')
             verified = True
+            important = 't'
         else:
             verified = False
 
         # publish to pubnub
-        # if (share_count>minimum_rt or verified):
-        if 1:
-            print ('PUBLISHING TO PUBNUB!')
-            pubnub_object = ({'sentiment': tweet_dict['sentiment'], 'group_item_id': group_item_id, 
+        print ('PUBLISHING TO PUBNUB!')
+        pubnub_object = ({'sentiment': tweet_dict['sentiment'], 'group_item_id': group_item_id, 
         'item_id': id_str, 'source': 'twitter', 'favorite_count': favorite_count,
         'share_count': share_count, 'contestant': tweet_dict['contestant'], 
-        'item_url': item_url, 'date': date})
-            pubnub.publish(channel='pubnub-sng',message=pubnub_object)
+        'item_url': item_url, 'date': date, 'important': important})
+        pubnub.publish(channel='pubnub-sng',message=pubnub_object)
 
         ####################################
         # bayes = TextBlob(tweet_trim, analyzer=NaiveBayesAnalyzer())

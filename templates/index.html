@@ -11,18 +11,29 @@
     <script type=text/javascript src="{{url_for('static', filename='pubnub-3.7.13.min.js') }}"></script>
     <script src="https://cdn.pubnub.com/pubnub-dev.js"></script>
 
+    <style>
+      div.borderOne {
+        border-style: solid;
+        background: #98bf21;
+        border-color: #8AC007;
+      } 
+    </style>
+
+
     <script>
       function init() {
         $("a.embed").oembed();
       }
 
       function renderItem(data) {
-        var itemString = ('<li id="twitter_li_' + data.item_id + 
-          '" class="fadeIn"> ID: ' + data.item_id + ' <br> ' +
-          " Shared: " + data.share_count + 
-          " Favourites: " + data.favorite_count + 
-          '<div id="twitter_' + data.item_id + '"></div>' +
-        "</li>")
+        if (data.important == 't') {
+          var itemString = ('<li id="twitter_li_' + data.item_id + 
+            '" class="bounce"> <div id="twitter_' + data.item_id + '" class="borderOne"> </div>' 
+            + "</li>")
+        } else {
+          var itemString = ('<li id="twitter_li_' + data.item_id + 
+            '" class="fadeIn"> <div id="twitter_' + data.item_id + '"></div>' + "</li>")
+        }
         console.log(itemString)
         return $(itemString);
       }
@@ -118,21 +129,21 @@
 
          <div style="float:left; width: 33%">
           Trending Positive Items:<br />
-          <ul id="positiveItemData">
+          <ul id="positiveItemData" style="list-style-type: none;">
 
           </ul>
          </div> <!-- end div left -->
 
          <div style="float:left; width: 33%">
           Trending Neutral Items:<br />
-          <ul id="neutralItemData">
+          <ul id="neutralItemData" style="list-style-type: none;">
           </ul>          
          </div> <!-- end div center -->
 
 
          <div style="float:left; width: 33%">
           Trending Negative Items:<br />
-          <ul id="negativeItemData">
+          <ul id="negativeItemData" style="list-style-type: none;">
           </ul>          
          </div> <!-- end div right -->
 

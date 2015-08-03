@@ -191,17 +191,31 @@ WHERE item_id IN
 ORDER BY share_count DESC
 
 
+# clean messages for human scoring (at least 1 hashtag)
+SELECT date, item_id, group_item_id, screen_name, regexp_replace(message, '\r|\n', ' ', 'g') as message_clean, favorite_count, share_count, contestant, sentiment, sentiment_textblob
+FROM item JOIN "user" ON item.user_id = "user".id
+WHERE group_item_id = item_id
+AND group_item_id IN
+	(SELECT group_item_id
+	FROM item JOIN item_hashtag ON item_hashtag.item_id=item.id
+	JOIN hashtag ON item_hashtag.hashtag_id=hashtag.id
+	GROUP BY group_item_id
+	HAVING COUNT(hashtag) > 0 )
+ORDER BY date DESC
+LIMIT 2000
+
 
 # update fav / share count
 UPDATE item SET favorite_count = '2000', share_count = '1800' WHERE item_id= '617592269621694464';
 UPDATE item SET favorite_count = '2000', share_count = '1800' WHERE item_id= '617527052086976512';
-
 UPDATE item SET group_item_id=item_id 
+
 
 # remove data with foreign key constraints
 DELETE FROM item_word WHERE item_id IN (SELECT id FROM item where contestant similar to '%[\U0001F44D-\U0001F6FF]%');
 DELETE FROM item_hashtag WHERE item_id IN (SELECT id FROM item where contestant similar to '%[\U0001F44D-\U0001F6FF]%');
 DELETE FROM item WHERE contestant similar to '%[\U0001F44D-\U0001F6FF]%';
+
 
 CREATE TEMPORARY TABLE old_items AS SELECT id, item_id FROM item WHERE date < (CURRENT_TIMESTAMP - INTERVAL '5 days');
 DELETE FROM item_word WHERE item_id IN (SELECT id FROM old_items);
@@ -210,6 +224,30 @@ DELETE FROM retweet_growth WHERE item_id IN (SELECT item_id FROM old_items);
 DELETE FROM url WHERE item_id IN (SELECT item_id FROM old_items);
 DELETE FROM item WHERE item_id IN (SELECT item_id FROM old_items);
 DISCARD TEMP;
+
+
+# delete duplicates
+CREATE TEMPORARY TABLE dups AS 
+	SELECT id, item_id 
+	FROM item 
+	WHERE message IN 
+		(SELECT message
+		FROM item 
+		GROUP BY message 
+		HAVING COUNT(message) > 1);
+DELETE FROM item_word WHERE item_id IN (SELECT id FROM dups);
+DELETE FROM item_hashtag WHERE item_id IN (SELECT id FROM dups);
+DELETE FROM url WHERE item_id IN (SELECT item_id FROM dups);
+DELETE FROM item WHERE item_id IN (SELECT item_id FROM dups);
+DISCARD TEMP;
+
+
+#purge tables
+TRUNCATE TABLE 
+follower, hashtag, item_hashtag, word, 
+item_word, retweet_growth, url, user_hashtag, 
+user_url, user_word, "user", item 
+CASCADE
 
 # db size
 select t1.datname AS db_name,  
