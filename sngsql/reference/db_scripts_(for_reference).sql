@@ -256,3 +256,159 @@ from pg_database t1
 order by pg_database_size(t1.datname) desc;
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+SELECT team, 
+	COUNT(team) AS count_total,
+	ROUND(100*COUNT(team)/(SELECT COUNT(team) FROM item)::NUMERIC,6) AS pc_total,
+	COUNT(CASE WHEN sentiment ='negative' THEN 1 ELSE NULL END) AS count_neg,
+	ROUND(100*COUNT(CASE WHEN sentiment ='negative' THEN 1 ELSE NULL END)/(SELECT COUNT(team) FROM item)::NUMERIC,6) AS pc_neg,
+	COUNT(CASE WHEN sentiment ='positive' THEN 1 ELSE NULL END) AS count_pos,
+	ROUND(100*COUNT(CASE WHEN sentiment ='positive' THEN 1 ELSE NULL END)/(SELECT COUNT(team) FROM item)::NUMERIC,6) AS pc_pos,
+	COUNT(CASE WHEN sentiment ='neutral' THEN 1 ELSE NULL END) AS count_neu,
+	ROUND(100*COUNT(CASE WHEN sentiment ='neutral' THEN 1 ELSE NULL END)/(SELECT COUNT(team) FROM item)::NUMERIC,6) AS pc_neu
+FROM item
+GROUP BY team
+
+
+
+
+
+SELECT hashtag, contestant,
+	ROUND(100*SUM(CASE WHEN sentiment_textblob ='negative' THEN 1 ELSE NULL END)/COUNT(share_count),2) AS pc_negative_tb,
+	ROUND(100*SUM(CASE WHEN sentiment_textblob ='neutral' THEN 1 ELSE NULL END)/COUNT(share_count),2) AS pc_neutral_tb,
+	ROUND(100*SUM(CASE WHEN sentiment_textblob ='positive' THEN 1 ELSE NULL END)/COUNT(share_count),2) AS pc_positive_tb,
+	ROUND(100*SUM(CASE WHEN sentiment ='negative' THEN 1 ELSE NULL END)/COUNT(share_count),2) AS pc_negative,
+	ROUND(100*SUM(CASE WHEN sentiment ='neutral' THEN 1 ELSE NULL END)/COUNT(share_count),2) AS pc_neutral,
+	ROUND(100*SUM(CASE WHEN sentiment ='positive' THEN 1 ELSE NULL END)/COUNT(share_count),2) AS pc_positive,
+	COUNT(share_count) AS tweet_count,
+	SUM(share_count) AS total_retweet_count
+FROM item_hashtag
+JOIN item ON item_hashtag.item_id=item.id
+JOIN hashtag ON item_hashtag.hashtag_id=hashtag.id
+GROUP BY hashtag, contestant
+HAVING count(hashtag) > 10
+ORDER BY contestant, hashtag
+
+
+
+
+
+SELECT word, contestant,
+	ROUND(100*SUM(CASE WHEN sentiment_textblob ='negative' THEN 1 ELSE NULL END)/COUNT(share_count),2) AS pc_negative_tb,
+	ROUND(100*SUM(CASE WHEN sentiment_textblob ='neutral' THEN 1 ELSE NULL END)/COUNT(share_count),2) AS pc_neutral_tb,
+	ROUND(100*SUM(CASE WHEN sentiment_textblob ='positive' THEN 1 ELSE NULL END)/COUNT(share_count),2) AS pc_positive_tb,
+	ROUND(100*SUM(CASE WHEN sentiment ='negative' THEN 1 ELSE NULL END)/COUNT(share_count),2) AS pc_negative,
+	ROUND(100*SUM(CASE WHEN sentiment ='neutral' THEN 1 ELSE NULL END)/COUNT(share_count),2) AS pc_neutral,
+	ROUND(100*SUM(CASE WHEN sentiment ='positive' THEN 1 ELSE NULL END)/COUNT(share_count),2) AS pc_positive,
+	COUNT(share_count) AS tweet_count,
+	SUM(share_count) AS total_retweet_count
+FROM item_word
+JOIN item ON item_word.item_id=item.id
+JOIN word ON item_word.word_id=word.id
+GROUP BY word, contestant
+HAVING count(word) > 100
+ORDER BY contestant, word
+
+
+
+
+SELECT ROUND(100*SUM(CASE WHEN sentiment ='negative' THEN 1 ELSE NULL END)/COUNT(item_id)::numeric,2) AS pc_negative,
+	ROUND(100*SUM(CASE WHEN sentiment ='neutral' THEN 1 ELSE NULL END)/COUNT(item_id)::numeric,2) AS pc_neutral,
+	ROUND(100*SUM(CASE WHEN sentiment ='positive' THEN 1 ELSE NULL END)/COUNT(item_id)::numeric,2) AS pc_positive
+FROM item
+
+
+
+
+DISCARD TEMP;
+CREATE TEMPORARY TABLE total_tweets AS SELECT COUNT(item_id) as no FROM item;
+SELECT contestant,
+	COUNT(item_id) as no_items,
+	ROUND(100*COUNT(item_id)/no::numeric,3) AS pc_tweets,
+	ROUND(100*SUM(CASE WHEN sentiment ='negative' THEN 1 ELSE NULL END)/COUNT(item_id)::numeric,2) AS pc_negative,
+	ROUND(100*SUM(CASE WHEN sentiment ='neutral' THEN 1 ELSE NULL END)/COUNT(item_id)::numeric,2) AS pc_neutral,
+	ROUND(100*SUM(CASE WHEN sentiment ='positive' THEN 1 ELSE NULL END)/COUNT(item_id)::numeric,2) AS pc_positive
+FROM item, total_tweets
+GROUP BY contestant, no
+ORDER BY no_items DESC;
+
+
+
+DISCARD TEMP;
+CREATE TEMPORARY TABLE total_tweets_all AS SELECT SUM(share_count) as no FROM item;
+CREATE TEMPORARY TABLE total_tweets_pos AS SELECT SUM(share_count) as no FROM item WHERE sentiment = 'positive';
+CREATE TEMPORARY TABLE total_tweets_neg AS SELECT SUM(share_count) as no FROM item WHERE sentiment = 'negative';
+CREATE TEMPORARY TABLE total_tweets_neu AS SELECT SUM(share_count) as no FROM item WHERE sentiment = 'neutral';
+SELECT contestant,
+	SUM(share_count) AS sum_retweets,
+	ROUND(100*SUM(share_count)/total_tweets_all.no::numeric,3) AS pc_total_tweets,
+	ROUND(100*SUM(CASE WHEN sentiment ='negative' THEN share_count ELSE NULL END)/total_tweets_neg.no::numeric,2) AS pc_total_negative,
+	ROUND(100*SUM(CASE WHEN sentiment ='neutral' THEN share_count ELSE NULL END)/total_tweets_neu.no::numeric,2) AS pc_total_neutral,
+	ROUND(100*SUM(CASE WHEN sentiment ='positive' THEN share_count ELSE NULL END)/total_tweets_pos.no::numeric,2) AS pc_total_positive,
+	ROUND(100*SUM(CASE WHEN sentiment ='negative' THEN share_count ELSE NULL END)/SUM(share_count)::numeric,2) AS pc_negative,
+	ROUND(100*SUM(CASE WHEN sentiment ='neutral' THEN share_count ELSE NULL END)/SUM(share_count)::numeric,2) AS pc_neutral,
+	ROUND(100*SUM(CASE WHEN sentiment ='positive' THEN share_count ELSE NULL END)/SUM(share_count)::numeric,2) AS pc_positive
+FROM item, total_tweets_all,total_tweets_neg,total_tweets_neu,total_tweets_pos
+GROUP BY contestant, total_tweets_all.no,total_tweets_neg.no,total_tweets_neu.no,total_tweets_pos.no
+ORDER BY sum_retweets DESC;
+
+
+
+DISCARD TEMP;
+CREATE TEMPORARY TABLE total AS SELECT COUNT(word) AS a
+FROM item_word JOIN item ON item_word.item_id=item.id JOIN word ON item_word.word_id=word.id;
+CREATE TEMPORARY TABLE pos AS SELECT COUNT(word) AS p
+FROM item_word JOIN item ON item_word.item_id=item.id JOIN word ON item_word.word_id=word.id
+WHERE sentiment= 'positive';
+CREATE TEMPORARY TABLE neg AS SELECT COUNT(word) AS n
+FROM item_word JOIN item ON item_word.item_id=item.id JOIN word ON item_word.word_id=word.id
+WHERE sentiment= 'negative';
+CREATE TEMPORARY TABLE neu AS SELECT COUNT(word) AS n
+FROM item_word JOIN item ON item_word.item_id=item.id JOIN word ON item_word.word_id=word.id
+WHERE sentiment= 'neutral';
+SELECT word, 
+	COUNT(word) AS count_total,
+	ROUND(100*COUNT(word)/(SELECT a FROM total)::NUMERIC,6) AS pc_total,
+	COUNT(CASE WHEN sentiment ='negative' THEN 1 ELSE NULL END) AS count_neg,
+	ROUND(100*COUNT(CASE WHEN sentiment ='negative' THEN 1 ELSE NULL END)/(SELECT n FROM neg)::NUMERIC,6) AS pc_neg,
+	COUNT(CASE WHEN sentiment ='positive' THEN 1 ELSE NULL END) AS count_pos,
+	ROUND(100*COUNT(CASE WHEN sentiment ='positive' THEN 1 ELSE NULL END)/(SELECT p FROM pos)::NUMERIC,6) AS pc_pos,
+	COUNT(CASE WHEN sentiment ='neutral' THEN 1 ELSE NULL END) AS count_neu,
+	ROUND(100*COUNT(CASE WHEN sentiment ='neutral' THEN 1 ELSE NULL END)/(SELECT n FROM neu)::NUMERIC,6) AS pc_neu
+FROM item_word JOIN item ON item_word.item_id=item.id JOIN word ON item_word.word_id=word.id
+GROUP BY word
+ORDER BY COUNT(word) DESC
+
+
+
+
+

@@ -21,10 +21,6 @@ db = SQLAlchemy(app)
 # Check Configuring Flask-Cache section for more details
 cache = Cache(app,config={'CACHE_TYPE': 'simple'})
 
-# for tweet embeding
-# from flask.ext.twitter_oembedder import TwitterOEmbedder
-# twitter_oembedder = TwitterOEmbedder()
-# twitter_oembedder.init(app,cache,debug=False)
 
 
 def get_timeseries_data():
@@ -192,76 +188,76 @@ def get_candidate(c,p):
 # saving data into db
 @app.route('/api/input_data/', methods=['POST'])
 def input():
-    req = json.loads(request.data.decode())
+	req = json.loads(request.data.decode())
 
-    try:
-        u = db_session.query(User).filter_by(uid=str(req['uid'])).one()
-    except NoResultFound:
-        u = User(uid=req['uid'],
-                screen_name=req['screen_name'],
-                followers_count=req['followers_count'],
-                friends_count=req['friends_count'],
-                statuses_count=req['statuses_count'],
-                rank=req['rank'])
-        db_session.add(u)
-        db_session.commit()
+	try:
+		try:
+			u = db_session.query(User).filter_by(uid=str(req['uid'])).one()
+		except NoResultFound:
+			u = User(uid=req['uid'],
+				screen_name=req['screen_name'],
+				followers_count=req['followers_count'],
+				friends_count=req['friends_count'],
+				statuses_count=req['statuses_count'],
+				rank=req['rank'])
+		db_session.add(u)
+		db_session.commit()
 
-    tw = Item(message=req['message'],
-            contestant=req['contestant'],
-            item_id=req['item_id'],
-            group_item_id=req['group_item_id'], # for expanded url
-            item_type=req['item_type'],
-            item_url=req['item_url'],
-            location=req['location'],
-            date=req['date'], # all time is stored at UTC
-            source=req['source'],
-            sentiment=req['sentiment'],
-            sentiment_textblob=req['sentiment_textblob'],
-            # sentiment_bayes=sentiment_bayes,
-            polarity=req['polarity'], # tbc
-            subjectivity=req['subjectivity'], # tbc
-            favorite_count=req['favorite_count'],
-            share_count=req['share_count'],
-            user_id=u.id,
-            verified_user=req['verified_user'],
-            team=req['team'],
-            data=req['data'])
-    db_session.add(tw)
-    db_session.commit()
+		tw = Item(message=req['message'],
+				contestant=req['contestant'],
+				item_id=req['item_id'],
+				group_item_id=req['group_item_id'], # for expanded url
+				item_type=req['item_type'],
+				item_url=req['item_url'],
+				location=req['location'],
+				date=req['date'], # all time is stored at UTC
+				source=req['source'],
+				sentiment=req['sentiment'],
+				sentiment_textblob=req['sentiment_textblob'],
+				sentiment_bayes=req['sentiment_bayes'],
+				polarity=req['polarity'], # tbc
+				subjectivity=req['subjectivity'], # tbc
+				favorite_count=req['favorite_count'],
+				share_count=req['share_count'],
+				user_id=u.id,
+				verified_user=req['verified_user'],
+				team=req['team'],
+				data=req['data'])
+		db_session.add(tw)
+		db_session.commit()
 
-    try:
-        # words
-        for w in req['words']:
-            if len(w)>100:
-                continue
-            w_obj = Word(word=w)
-            db_session.add(w_obj)
-            db_session.commit()
-            tw.words.append(w_obj)
-            u.words.append(w_obj)
+		# words
+		for w in req['words']:
+			if len(w)>100:
+				continue
+			w_obj = Word(word=w)
+			db_session.add(w_obj)
+			db_session.commit()
+			tw.words.append(w_obj)
+			u.words.append(w_obj)
 
-        # hashtags
-        for t in req['hashtags']:
-            if len(t)>100:
-                continue
-            t_obj = Hashtag(hashtag=t)
-            db_session.add(t_obj)
-            db_session.commit()
-            tw.hashtags.append(t_obj)
-            u.hashtags.append(t_obj)
+		# hashtags
+		for t in req['hashtags']:
+			if len(t)>100:
+				continue
+			t_obj = Hashtag(hashtag=t)
+			db_session.add(t_obj)
+			db_session.commit()
+			tw.hashtags.append(t_obj)
+			u.hashtags.append(t_obj)
 
-        # url
-        if req['expanded_url'] and len(req['expanded_url'])<200:
-            url = Url(item_id=req['item_id'],
-                url=req['expanded_url'])
-            db_session.add(url)
-            db_session.commit()
+		# url
+		if req['expanded_url'] and len(req['expanded_url'])<200:
+			url = Url(item_id=req['item_id'],
+				url=req['expanded_url'])
+			db_session.add(url)
+			db_session.commit()
 
-    except OperationalError:
-        db_session.rollback()
+	except OperationalError:
+		db_session.rollback()
 
-    print (tw.id)
-    return str(tw.id)
+	print (tw.id)
+	return str(tw.id)
 
 
 

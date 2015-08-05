@@ -41,6 +41,10 @@ def analyse_tweet(tweetstring,expanded_url):
     print ('hashtags: ' + str(hashtags))
     print ('shoutouts: ' + str(shoutouts))
 
+    # ! implies pos / neg sentiment 93% of time
+    if '!' in tweetstring:
+        print ('"!" FOUND - SHOULD NOT BE + or -')
+
     #remove punctuation
     tweetstring = tweetstring.translate(str.maketrans("", "", string.punctuation))
 

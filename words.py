@@ -55,7 +55,6 @@ CANDIDATE_HASHTAGS = ({'christie2016': {'Name': 'Chris Christie', 'Sentiment': '
 		'tellingitlikeitis': {'Name': 'Chris Christie', 'Sentiment': 'negative'},
 		'jindal2016': {'Name': 'Bobby Jindal', 'Sentiment': 'positive'},
 		'askbobby': {'Name': 'Bobby Jindal', 'Sentiment': 'negative'},
-		'donaldtrump': {'Name': 'Donald Trump', 'Sentiment': 'negative'},
 		'dumptrump': {'Name': 'Donald Trump', 'Sentiment': 'negative'},
 		'trump': {'Name': 'Donald Trump', 'Sentiment': 'negative'},
 		'fucktrump': {'Name': 'Donald Trump', 'Sentiment': 'negative'},
@@ -90,5 +89,6 @@ CANDIDATE_HASHTAGS = ({'christie2016': {'Name': 'Chris Christie', 'Sentiment': '
 		'chafee2016': {'Name': 'Lincoln Chafee', 'Sentiment': 'positive'},
 		'omalley2016': {'Name': 'Martin OMalley', 'Sentiment': 'positive'},
 		'bernie2016': {'Name': 'Bernie Sanders', 'Sentiment': 'positive'},
+		'sanders2016': {'Name': 'Bernie Sanders', 'Sentiment': 'positive'},
 		'feelthebern': {'Name': 'Bernie Sanders', 'Sentiment': 'positive'}})
 
