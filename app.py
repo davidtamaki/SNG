@@ -55,7 +55,7 @@ def get_timeseries_data():
 def get_barchart_data():
 	sql = (
 		'''SELECT contestant,
-			ROUND(100*SUM(CASE WHEN sentiment ='negative' THEN share_count ELSE NULL END)/SUM(share_count),2) AS pc_negative,
+			ROUND(-100*SUM(CASE WHEN sentiment ='negative' THEN share_count ELSE NULL END)/SUM(share_count),2) AS pc_negative,
 			ROUND(100*SUM(CASE WHEN sentiment ='neutral' THEN share_count ELSE NULL END)/SUM(share_count),2) AS pc_neutral,
 			ROUND(100*SUM(CASE WHEN sentiment ='positive' THEN share_count ELSE NULL END)/SUM(share_count),2) AS pc_positive,
 			SUM(share_count) AS total_retweet_count
@@ -70,20 +70,44 @@ def get_barchart_data():
 	b_data['type'] = 'bar'
 	b_data['json'] = {}
 	b_data['json']['negative'] = []
-	b_data['json']['neutral'] = []
 	b_data['json']['positive'] = []
 	bar_categories = []
 	for row in bar_data:
 		b_data['json']['negative'].append(row['pc_negative'])
-		b_data['json']['neutral'].append(row['pc_neutral'])
 		b_data['json']['positive'].append(row['pc_positive'])
 		bar_categories.append(row['contestant'])
 	b_data['groups'] = [['negative','positive']]
 	b_data['order'] = None
-	b_data['colors'] = {'positive': '#2ca02c','neutral': '#1f77b4','negative': '#ff7f0e'}
+	b_data['colors'] = {'positive': '#2ca02c','negative': '#ff7f0e'}
 	bar_data = json.dumps(b_data)
 	print (bar_data)
 	return ({'bar_data': bar_data, 'bar_categories': bar_categories})
+
+def get_hashtag_count_data():
+	sql = (
+		'''SELECT hashtag,
+			COUNT(share_count) AS tweet_count
+		FROM item_hashtag
+		JOIN item ON item_hashtag.item_id=item.id
+		JOIN hashtag ON item_hashtag.hashtag_id=hashtag.id
+		GROUP BY hashtag
+		HAVING count(hashtag) > 10
+		ORDER BY tweet_count DESC
+		LIMIT 100''')
+	hashtag_data = array_to_dicts(db_session.execute(sql))
+	h_counts = []
+	h_data = []
+	for row in hashtag_data:
+		h_counts.append(float(row['tweet_count']))
+	total = sum(h_counts)
+	smallest_relative_size = min(h_counts)/total
+	for row in hashtag_data:
+		relative_size = ((float(row['tweet_count'])/total))
+		size = min((relative_size/smallest_relative_size)*20,80)
+		h_data.append({"text": row['hashtag'], "size": round(size)})
+	hashtag_data = json.dumps(h_data)
+	print (hashtag_data)
+	return hashtag_data
 
 
 
@@ -108,7 +132,7 @@ def root():
 				AND date > (CURRENT_TIMESTAMP - interval '24 hours')
 				ORDER BY group_item_id)
 			ORDER BY share_count DESC
-			LIMIT 30;
+			LIMIT 20;
 
 			CREATE TEMPORARY TABLE neg AS
 			SELECT contestant, date, item_id, group_item_id, favorite_count, share_count, item_url, sentiment, source
@@ -119,7 +143,7 @@ def root():
 				AND date > (CURRENT_TIMESTAMP - interval '24 hours')
 				ORDER BY group_item_id)
 			ORDER BY share_count DESC
-			LIMIT 30;
+			LIMIT 20;
 
 			CREATE TEMPORARY TABLE neu AS
 			SELECT contestant, date, item_id, group_item_id, favorite_count, share_count, item_url, sentiment, source
@@ -130,7 +154,7 @@ def root():
 				AND date > (CURRENT_TIMESTAMP - interval '24 hours')
 				ORDER BY group_item_id)
 			ORDER BY share_count DESC
-			LIMIT 30;
+			LIMIT 20;
 
 			SELECT * FROM pos
 			UNION ALL
@@ -138,7 +162,6 @@ def root():
 			UNION ALL
 			SELECT * FROM neu;''')
 	tweet_data = array_to_dicts(db_session.execute(sql))
-	print (tweet_data)
 
 	# for charts
 	timeseries_result = get_timeseries_data()
@@ -146,9 +169,10 @@ def root():
 	bar_result = get_barchart_data()
 	bar_data = bar_result['bar_data']
 	bar_categories = bar_result['bar_categories']
+	hashtag_data = get_hashtag_count_data()
 
 
-	return render_template('index.html',tweet_data=tweet_data,
+	return render_template('index.html',tweet_data=tweet_data,hashtag_data=hashtag_data,
 		timeseries_data=timeseries_data,bar_data=bar_data,bar_categories=bar_categories)
 
 
@@ -183,6 +207,21 @@ def get_candidate(c,p):
 		total=int(len(results)/3), search=False, record_name='item',format_total=True,format_number=True)
 	return render_template('source.html',css_framework='bootstrap',
 		tweet_data=tweet_data,pagination=pagination)
+
+
+# refresh data
+@app.route('/api/chart/<c>/', methods=['GET'])
+def refresh_chart(c):
+	if c=='hashtagcloud':
+		return get_hashtag_count_data()
+	elif c=='barchart':
+		bar_result = get_barchart_data()
+		return (bar_result['bar_data'],bar_result['bar_categories'])
+	elif c =='timeseries':
+		timeseries_result = get_timeseries_data()
+		return timeseries_result['timeseries_data']
+	else:
+		return ('error')
 
 
 # saving data into db

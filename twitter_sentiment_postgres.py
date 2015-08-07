@@ -107,9 +107,9 @@ class TweetStreamListener(StreamListener):
 
         id_str = key_fields["id_str"]
         tweet = key_fields["text"]
-        if retweeted_quoted_status:
-            favorite_count = dict_data["retweeted_status"]["favorite_count"] # pull fav count from retweet level
-            share_count = dict_data["retweeted_status"]["retweet_count"] # pull share count from retweet level
+        if retweeted_quoted_status or retweeted_status:
+            favorite_count = dict_data["retweeted_status"]["favorite_count"]
+            share_count = dict_data["retweeted_status"]["retweet_count"]
         else:
             favorite_count = key_fields["favorite_count"]
             share_count = key_fields["retweet_count"]
@@ -146,9 +146,9 @@ class TweetStreamListener(StreamListener):
                 return
             record.favorite_count=favorite_count
             record.share_count=share_count
-            db_session.flush()
+            db_session.commit()
 
-            # # print ('PUBLISHING TO PUBNUB!')
+            # publish to pubnub
             # pubnub_object = ({'sentiment': record.sentiment, 'group_item_id': record.group_item_id, 
             #         'item_id': id_str, 'source': 'twitter', 'favorite_count': favorite_count,
             #         'share_count': share_count, 'contestant': record.contestant, 
@@ -201,7 +201,8 @@ class TweetStreamListener(StreamListener):
             verified = False
 
 
-        # # publish to pubnub
+        # publish to pubnub
+        # print (pubnub_words)
         # pubnub_object = ({'sentiment': tweet_dict['sentiment'], 'group_item_id': group_item_id, 
         # 'item_id': id_str, 'source': 'twitter', 'favorite_count': favorite_count,
         # 'share_count': share_count, 'contestant': tweet_dict['contestant'], 
