@@ -7,23 +7,13 @@
     <link rel="stylesheet" href="{{url_for('static', filename='c3.min.css') }}"/>
     <link rel="stylesheet" href="{{url_for('static', filename='animations.css') }}"/>
     <link rel="stylesheet" href="{{url_for('static', filename='font-awesome.min.css') }}"/>
-    <link rel="stylesheet" href="{{url_for('static', filename='purely-css-buttons.css') }}"/>
     <link rel="stylesheet" href="{{url_for('static', filename='fdw-simple-button.css') }}"/>
-    <link rel="stylesheet" href="{{url_for('static', filename='style.css') }}"/>
+    <link rel="stylesheet" href="{{url_for('static', filename='obvious-buttons.css') }}"/>
     <link rel="stylesheet" href="{{url_for('static', filename='index.css') }}"/>
 
     <!-- For PubNub -->
     <script type=text/javascript src="{{url_for('static', filename='pubnub-3.7.13.min.js') }}"></script>
     <script src="https://cdn.pubnub.com/pubnub-dev.js"></script>
-
-    <style>
-      div.borderOne {
-        border-style: solid;
-        background: #98bf21;
-        border-color: #8AC007;
-      } 
-    </style>
-
 
     <script>
       var URL = 'http://localhost:5000/';
@@ -36,27 +26,90 @@
         return Httpreq.responseText;          
       }
 
+      function hideAllCharts() {
+        if($('#wordCloud').length) {
+          $('#wordCloud').html('');
+        }
+        if($('#chart_timeseries').length) {
+          $('#chart_timeseries').html('');
+        }
+        if($('#chart_bar').length) {
+          $('#chart_bar').html('');
+        }
+      }
 
       function refreshHashtagCloud() {
         var jsonData = JSON.parse(Get(URL + 'api/chart/hashtagcloud'));
         console.log(jsonData);
-
-        if($('#wordCloud').length) {
-          $('#wordCloud').html('');
-        }
+        hideAllCharts();
         initHashCloud(jsonData);
       }
 
+      function showTimeSeries() {
+        var jsonData = JSON.parse(Get(URL + 'api/chart/time'));
+        console.log(jsonData);
+        hideAllCharts();
+        initTimeseries(jsonData.timeseries_data);
+      }        
 
-// expand / colapse
-// $('#elementId').visible()
+      function showBarChart() {
+        var jsonData = JSON.parse(Get(URL + 'api/chart/bar'));
+        console.log(jsonData);
+        hideAllCharts();
+        initBarchart(jsonData.bar_data,jsonData.bar_categories);
+      } 
+      /* refresh charts end */
 
+
+      /* filter tweets (by candidate) start */
+      function filterTweet(candidate) {
+        var c = candidate.substr(0,candidate.indexOf(' '));
+        var posArray = $('#positiveItemData li');
+        var posCount = $('#positiveItemData li').length;
+        var neuArray = $('#neutralItemData li');
+        var neuCount = $('#neutralItemData li').length;
+        var negArray = $('#negativeItemData li');
+        var negCount = $('#negativeItemData li').length;
+        filterLists(c,posArray,posCount);
+        filterLists(c,neuArray,neuCount);
+        filterLists(c,negArray,negCount);
+      }
+
+      function filterLists(c,array,max) {
+        for (i = 0; i < max; i++) {
+          if ($(array[i]).hasClass(c)) {
+            $(array[i]).show();
+          }
+          else {
+            $(array[i]).hide();
+          }
+        }
+      }
+
+      function showAll() {
+        var posArray = $('#positiveItemData li');
+        var posCount = $('#positiveItemData li').length;
+        var neuArray = $('#neutralItemData li');
+        var neuCount = $('#neutralItemData li').length;
+        var negArray = $('#negativeItemData li');
+        var negCount = $('#negativeItemData li').length;
+        showTweet(posArray,posCount);
+        showTweet(neuArray,neuCount);
+        showTweet(negArray,negCount);
+      }
+
+      function showTweet(array,max) {
+        for (i = 0; i < max; i++) {
+            $(array[i]).show();
+          }
+      }
+      /* filter tweets end */
 
       /* word cloud start */
       function initHashCloud(wordsData) {
         var fill = d3.scale.category20();
         var layout = d3.layout.cloud()
-            .size([1200, 500])
+            .size([1100, 350])
             .words(wordsData)
             .padding(5)
             .rotate(function() { return ~~(Math.random() * 2) * 90; })
@@ -86,18 +139,15 @@
       /* word cloud end */
 
       /* charts c3 start */
-      function initTimeseries() {
+      function initTimeseries(timeseriesData) {
         var chart_ts = c3.generate({
           bindto: '#chart_timeseries',
-          data: {{timeseries_data|safe}},
+          data: timeseriesData,
           axis: {
             x: {
-                label: 'Date',
-                type: 'timeseries',
-                tick: {
-                      fit: true,
-                      format: '%Y-%m-%d'
-                }
+                label: 'Time',
+                type: 'category',
+                categories: ['cat1', 'cat2', 'cat3', 'cat4', 'cat5', 'cat6']
             },
             y: {
                 label: 'No. of Retweets'
@@ -105,10 +155,10 @@
           }
         });
       }
-      function initBarchart() {
+      function initBarchart(barData,barCat) {
         var chart_bar = c3.generate({
           bindto: '#chart_bar',
-          data: {{bar_data|safe}},
+          data: barData,
           grid: {
             y: {
               lines:[{value:0}]
@@ -117,7 +167,7 @@
           axis: {
             x: {
                 type: 'category',
-                categories: {{bar_categories|safe}}
+                categories: barCat
             },
             y: {
                 label: '% of Retweets'
@@ -132,13 +182,13 @@
       function renderItem(data) {
         if (data.important == 't') {
           var itemString = ('<li id="twitter_li_' + data.item_id + 
-            '" class="bounce"> <div id="twitter_' + data.item_id + '" class="borderOne"> </div>' 
-            + "</li>")
+            '" class="bounce ' + data.contestant + '"> <div id="twitter_' + data.item_id + '" class="borderOne"> </div>' 
+            + "</li>");
         } else {
           var itemString = ('<li id="twitter_li_' + data.item_id + 
-            '" class="fadeIn"> <div id="twitter_' + data.item_id + '"></div>' + "</li>")
+            '" class="fadeIn ' + data.contestant + '"> <div id="twitter_' + data.item_id + '"></div>' + "</li>");
         }
-        console.log(itemString)
+        console.log(itemString);
         return $(itemString);
       }
 
@@ -154,11 +204,16 @@
 
       function renderAndPrepend(data) {
         // specify correct container (e.g. #positiveItemData)
+        // push to front of queue and maintain max size of 20
         var containerID = '#' + data.sentiment + 'ItemData';
         var listItemID = '#twitter_li_' + data.item_id;
-        //remove li if already exists (bring to top)
-        if($(containerID + ' ' + listItemID).length) {
+        if ($(containerID + ' ' + listItemID).length) {
           $(containerID + ' ' + listItemID).remove();
+        } else {
+          var size = $(containerID + ' li').length;
+          if (size>=30) {
+            $(containerID + ' li:last-child').remove();
+          }
         }
         $(containerID).prepend(renderItem(data));
         renderTweetEmbed(data);
@@ -190,12 +245,19 @@
         getStreamData();
 
         var wordsData = {{hashtag_data|safe}};
+        var timeseriesData = {{timeseries_data|safe}};
+        var barData = {{bar_data|safe}};
+        var barCat = {{bar_categories|safe}};
+
         initHashCloud(wordsData);
-        // initTimeseries();
-        // initBarchart();
+        // initTimeseries(timeseriesData);
+        // initBarchart(barData,barCat);
+        // setInterval(refreshHashtagCloud, 10000);
+
       }
 
       window.onload = start;
+
 
     </script>          
 
@@ -207,42 +269,45 @@
 
     <div class="container"> <!-- container start -->
       <div class="header">
-        <div class="tags" id="tags">
-          <ul class="tags-list">
-            <li><a href="#" class="tag">Bush</a></li>
-            <li><a href="#" class="tag">Carson</a></li>
-            <li><a href="#" class="tag">Christie</a></li>
-            <li><a href="#" class="tag">Clinton</a></li>
-            <li><a href="#" class="tag">Cruz</a></li>
-            <li><a href="#" class="tag">Graham</a></li>
-            <li><a href="#" class="tag">Jindal</a></li>
-            <li><a href="#" class="tag">Paul</a></li>
-            <li><a href="#" class="tag">Perry</a></li>   
-            <li><a href="#" class="tag">Sanders</a></li>
-            <li><a href="#" class="tag">Trump</a></li>
-            <li><a href="#" class="tag">Walker</a></li>                
-          </ul>
+
+        <div class="containerLinks" id="tags" style="text-align:justify;">
+          <div><a onclick="filterTweet('Jeb Bush')" class="btn btn-inline btn-small"><span>Bush</span></a></div>
+          <div><a onclick="filterTweet('Ben Carson')" class="btn btn-inline btn-small"><span>Carson</span></a></div>
+          <div><a onclick="filterTweet('Chris Christie')" class="btn btn-inline btn-small"><span>Christie</span></a></div>
+          <div><a onclick="filterTweet('Hillary Clinton')" class="btn btn-inline btn-small"><span>Clinton</span></a></div>
+          <div><a onclick="filterTweet('Ted Cruz')" class="btn btn-inline btn-small"><span>Cruz</span></a></div>
+          <div><a onclick="filterTweet('Lindsey Graham')" class="btn btn-inline btn-small"><span>Graham</span></a></div>
+          <div><a onclick="filterTweet('Bobby Jindal')" class="btn btn-inline btn-small"><span>Jindal</span></a></div>
+          <div><a onclick="filterTweet('Rand Paul')" class="btn btn-inline btn-small"><span>Paul</span></a></div>
+          <div><a onclick="filterTweet('Rick Perry')" class="btn btn-inline btn-small"><span>Perry</span></a></div>
+          <div><a onclick="filterTweet('Bernie Sanders')" class="btn btn-inline btn-small"><span>Sanders</span></a></div>
+          <div><a onclick="filterTweet('Donald Trump')" class="btn btn-inline btn-small"><span>Trump</span></a></div>
+          <div><a onclick="filterTweet('Scott Walker')" class="btn btn-inline btn-small"><span>Walker</span></a></div>
         </div>
 
         <br></br>
 
         <center>
-          <h1> <strong>Social</strong> News Generator</h1>
+          <span title="display all tweets">
+            <h1 class= "title" onclick= "showAll()"> <strong>Social</strong> News Generator</h1>
+          </span>
         </center>
       </div>
 
+<br></br>
       <center>
-        <a onclick="refreshHashtagCloud()" class="btn btn-blue">Refresh</a>
+        <a id="showHashCloudButton" onclick="refreshHashtagCloud()" class="btn btn-inline btn-large btn-info">Hash Cloud</a>
+        <a id="showTimeSeriesButton" onclick="showTimeSeries()" class="btn btn-inline btn-large btn-primary">Time Series</a>
+        <a id="showBarChartButton" onclick="showBarChart()" class="btn btn-inline btn-large btn-primary">Bar Chart</a>
+        <div id="wordCloud" class="pullUp"></div>
+        <p></p>
+
+        <div id="chart_timeseries" class="pullUp"></div>
+        <p></p>
+
+        <div id="chart_bar" class="pullUp"></div>
+        <p></p>
       </center>
-
-      <div id="wordCloud" class="pullUp"></div>
-      <p></p>
-
-      <div id="chart_timeseries" class="pullUp"></div>
-      <p></p>
-
-      <div id="chart_bar" class="pullUp"></div>
-      <p></p>
 
       <div style="width: 100%;">
 

@@ -149,11 +149,11 @@ class TweetStreamListener(StreamListener):
             db_session.commit()
 
             # publish to pubnub
-            # pubnub_object = ({'sentiment': record.sentiment, 'group_item_id': record.group_item_id, 
-            #         'item_id': id_str, 'source': 'twitter', 'favorite_count': favorite_count,
-            #         'share_count': share_count, 'contestant': record.contestant, 
-            #         'item_url': item_url, 'date': date, 'important': important})
-            # pubnub.publish(channel='pubnub-sng',message=pubnub_object)
+            pubnub_object = ({'sentiment': record.sentiment, 'group_item_id': record.group_item_id, 
+                    'item_id': id_str, 'source': 'twitter', 'favorite_count': favorite_count,
+                    'share_count': share_count, 'contestant': record.contestant, 
+                    'item_url': item_url, 'date': date, 'important': important})
+            pubnub.publish(channel='pubnub-sng',message=pubnub_object)
             print ('Retweet caught. Updated favorite and share count record. ID: ' + str(id_str) + '\n')
             return
         except NoResultFound:
@@ -202,12 +202,11 @@ class TweetStreamListener(StreamListener):
 
 
         # publish to pubnub
-        # print (pubnub_words)
-        # pubnub_object = ({'sentiment': tweet_dict['sentiment'], 'group_item_id': group_item_id, 
-        # 'item_id': id_str, 'source': 'twitter', 'favorite_count': favorite_count,
-        # 'share_count': share_count, 'contestant': tweet_dict['contestant'], 
-        # 'item_url': item_url, 'date': date, 'important': important})
-        # pubnub.publish(channel='pubnub-sng',message=pubnub_object)
+        pubnub_object = ({'sentiment': tweet_dict['sentiment'], 'group_item_id': group_item_id, 
+        'item_id': id_str, 'source': 'twitter', 'favorite_count': favorite_count,
+        'share_count': share_count, 'contestant': tweet_dict['contestant'], 
+        'item_url': item_url, 'date': date, 'important': important})
+        pubnub.publish(channel='pubnub-sng',message=pubnub_object)
 
 
         # select correct fields

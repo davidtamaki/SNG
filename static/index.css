@@ -22,7 +22,7 @@ p {
 
 .header {
   position: relative;
-  margin: 30px 0 10px 0;
+  margin: 0px 0 10px 0;
 }
   .header h1 {
     margin: 0;
@@ -102,3 +102,25 @@ h3 {
 .top-space {
   margin-top: 30px;
 }
+
+/* DS added for top links on index page*/
+.containerLinks > div {
+    display: inline-block;
+    display: -moz-inline-box;
+    *display: inline; /* For IE7 */
+    zoom: 1; /* Trigger hasLayout */
+    width: 7.9%;
+    text-align: center;
+}
+
+/*DS added for important tweets to flag*/
+div.borderOne {
+    border-style: solid;
+    background: #98bf21;
+    border-color: #8AC007;
+} 
+
+/*mouse hover over title (unfilter all)*/
+h1.title { cursor: pointer; }
+
+

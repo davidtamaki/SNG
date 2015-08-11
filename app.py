@@ -26,31 +26,60 @@ cache = Cache(app,config={'CACHE_TYPE': 'simple'})
 def get_timeseries_data():
 	sql = (
 		'''SELECT contestant,
-			sum(CASE WHEN date::date = current_date-4 THEN share_count ELSE NULL END) +
-				count(CASE WHEN date::date = current_date-4 AND share_count = '0' THEN item_id ELSE NULL END)AS fourdaysago,
-			sum(CASE WHEN date::date = current_date-3 THEN share_count ELSE NULL END) +
-				count(CASE WHEN date::date = current_date-3 AND share_count = '0' THEN item_id ELSE NULL END)AS threedaysago,
-			sum(CASE WHEN date::date = current_date-2 THEN share_count ELSE NULL END) +
-				count(CASE WHEN date::date = current_date-2 AND share_count = '0' THEN item_id ELSE NULL END)AS twodaysago,
-			sum(CASE WHEN date::date = current_date-1 THEN share_count ELSE NULL END) +
-				count(CASE WHEN date::date = current_date-1 AND share_count = '0' THEN item_id ELSE NULL END) AS yesterday,
-			sum(CASE WHEN date::date = current_date THEN share_count ELSE NULL END) +
-				count(CASE WHEN date::date = current_date AND share_count = '0' THEN item_id ELSE NULL END) AS today
-		FROM item
-		GROUP BY contestant
-		HAVING sum(share_count)>1000
-		ORDER BY sum(share_count) DESC''')
+			COALESCE(sum(CASE WHEN date::TIMESTAMP + INTERVAL '1 hour' >= (CURRENT_TIMESTAMP - INTERVAL '60 minute') 
+				AND date::TIMESTAMP + INTERVAL '1 hour' < (CURRENT_TIMESTAMP - INTERVAL '50 minute') THEN share_count ELSE NULL END) +
+				count(CASE WHEN date::TIMESTAMP + INTERVAL '1 hour' >= (CURRENT_TIMESTAMP - INTERVAL '60 minute') 
+				AND date::TIMESTAMP + INTERVAL '1 hour' < (CURRENT_TIMESTAMP - INTERVAL '50 minute')
+				AND share_count = '0' THEN item_id ELSE NULL END),0) AS fiftyToSixtyMinAgo,
+			COALESCE(sum(CASE WHEN date::TIMESTAMP + INTERVAL '1 hour' >= (CURRENT_TIMESTAMP - INTERVAL '50 minute') 
+				AND date::TIMESTAMP + INTERVAL '1 hour' < (CURRENT_TIMESTAMP - INTERVAL '40 minute') THEN share_count ELSE NULL END) +
+				count(CASE WHEN date::TIMESTAMP + INTERVAL '1 hour' >= (CURRENT_TIMESTAMP - INTERVAL '50 minute') 
+				AND date::TIMESTAMP + INTERVAL '1 hour' < (CURRENT_TIMESTAMP - INTERVAL '40 minute')
+				AND share_count = '0' THEN item_id ELSE NULL END),0) AS fortyToFiftyMinAgo,
+			COALESCE(sum(CASE WHEN date::TIMESTAMP + INTERVAL '1 hour' >= (CURRENT_TIMESTAMP - INTERVAL '40 minute') 
+				AND date::TIMESTAMP + INTERVAL '1 hour' < (CURRENT_TIMESTAMP - INTERVAL '30 minute') THEN share_count ELSE NULL END) +
+				count(CASE WHEN date::TIMESTAMP + INTERVAL '1 hour' >= (CURRENT_TIMESTAMP - INTERVAL '40 minute') 
+				AND date::TIMESTAMP + INTERVAL '1 hour' < (CURRENT_TIMESTAMP - INTERVAL '30 minute') 
+				AND share_count = '0' THEN item_id ELSE NULL END),0) AS thirtyToFortyMinAgo,
+			COALESCE(sum(CASE WHEN date::TIMESTAMP + INTERVAL '1 hour' >= (CURRENT_TIMESTAMP - INTERVAL '30 minute') 
+				AND date::TIMESTAMP + INTERVAL '1 hour' < (CURRENT_TIMESTAMP - INTERVAL '20 minute') THEN share_count ELSE NULL END) +
+				count(CASE WHEN date::TIMESTAMP + INTERVAL '1 hour' >= (CURRENT_TIMESTAMP - INTERVAL '30 minute') 
+				AND date::TIMESTAMP + INTERVAL '1 hour' < (CURRENT_TIMESTAMP - INTERVAL '20 minute') 
+				AND share_count = '0' THEN item_id ELSE NULL END),0) AS twentyToThirtyMinAgo,
+			COALESCE(sum(CASE WHEN date::TIMESTAMP + INTERVAL '1 hour' >= (CURRENT_TIMESTAMP - INTERVAL '20 minute') 
+				AND date::TIMESTAMP + INTERVAL '1 hour' < (CURRENT_TIMESTAMP - INTERVAL '10 minute') THEN share_count ELSE NULL END) +
+				count(CASE WHEN date::TIMESTAMP + INTERVAL '1 hour' >= (CURRENT_TIMESTAMP - INTERVAL '20 minute') 
+				AND date::TIMESTAMP + INTERVAL '1 hour' < (CURRENT_TIMESTAMP - INTERVAL '10 minute') 
+				AND share_count = '0' THEN item_id ELSE NULL END),0) AS tenToTwentyMinAgo,
+			COALESCE(sum(CASE WHEN date::TIMESTAMP + INTERVAL '1 hour' >= (CURRENT_TIMESTAMP - INTERVAL '10 minute') 
+				AND date::TIMESTAMP + INTERVAL '1 hour' < CURRENT_TIMESTAMP THEN share_count ELSE NULL END) +
+				count(CASE WHEN date::TIMESTAMP + INTERVAL '1 hour' >= (CURRENT_TIMESTAMP - INTERVAL '10 minute') 
+				AND date::TIMESTAMP + INTERVAL '1 hour' < CURRENT_TIMESTAMP
+				AND share_count = '0' THEN item_id ELSE NULL END),0) AS lastTenMin
+			FROM item
+			GROUP BY contestant
+			HAVING sum(share_count)>1000
+			ORDER BY sum(share_count) DESC''')
 	timeseries_data = array_to_dicts(db_session.execute(sql))
+
+	sixty_min = str(datetime.datetime.utcnow()+timedelta(minutes=10))
+	fifty_min = str(datetime.datetime.utcnow()+timedelta(minutes=20))
+	forty_min = str(datetime.datetime.utcnow()+timedelta(minutes=30))
+	thirty_min = str(datetime.datetime.utcnow()+timedelta(minutes=40))
+	twenty_min = str(datetime.datetime.utcnow()+timedelta(minutes=50))
+	ten_min = str(datetime.datetime.utcnow()+timedelta(minutes=60))
 
 	ts_data = {}
 	ts_data['json'] = {}
 	ts_data['x'] = 'x'
 	for row in timeseries_data:
-		ts_data['json'][row['contestant']] = [row['fourdaysago'],row['threedaysago'],row['twodaysago'],row['yesterday'],row['today']]
-	ts_data['json']['x'] = [str(date.today()-timedelta(4)),str(date.today()-timedelta(3)),str(date.today()-timedelta(2)),str(date.today()-timedelta(1)),str(date.today())]
+		ts_data['json'][row['contestant']] = [row['fiftytosixtyminago'],row['fortytofiftyminago'],row['thirtytofortyminago'],row['twentytothirtyminago'],row['tentotwentyminago'],row['lasttenmin']]
+	ts_data['json']['x'] = [sixty_min[0:16],fifty_min[0:16],forty_min[0:16],thirty_min[0:16],twenty_min[0:16],ten_min[0:16]]
 	timeseries_data = json.dumps(ts_data)
 	print (timeseries_data)
 	return ({'timeseries_data': timeseries_data})
+
+
 
 def get_barchart_data():
 	sql = (
@@ -103,7 +132,7 @@ def get_hashtag_count_data():
 	smallest_relative_size = min(h_counts)/total
 	for row in hashtag_data:
 		relative_size = ((float(row['tweet_count'])/total))
-		size = min((relative_size/smallest_relative_size)*20,80)
+		size = min((relative_size/smallest_relative_size)*20,70)
 		h_data.append({"text": row['hashtag'], "size": round(size)})
 	hashtag_data = json.dumps(h_data)
 	print (hashtag_data)
@@ -132,7 +161,7 @@ def root():
 				AND date > (CURRENT_TIMESTAMP - interval '24 hours')
 				ORDER BY group_item_id)
 			ORDER BY share_count DESC
-			LIMIT 20;
+			LIMIT 3;
 
 			CREATE TEMPORARY TABLE neg AS
 			SELECT contestant, date, item_id, group_item_id, favorite_count, share_count, item_url, sentiment, source
@@ -143,7 +172,7 @@ def root():
 				AND date > (CURRENT_TIMESTAMP - interval '24 hours')
 				ORDER BY group_item_id)
 			ORDER BY share_count DESC
-			LIMIT 20;
+			LIMIT 3;
 
 			CREATE TEMPORARY TABLE neu AS
 			SELECT contestant, date, item_id, group_item_id, favorite_count, share_count, item_url, sentiment, source
@@ -154,7 +183,7 @@ def root():
 				AND date > (CURRENT_TIMESTAMP - interval '24 hours')
 				ORDER BY group_item_id)
 			ORDER BY share_count DESC
-			LIMIT 20;
+			LIMIT 3;
 
 			SELECT * FROM pos
 			UNION ALL
@@ -214,14 +243,21 @@ def get_candidate(c,p):
 def refresh_chart(c):
 	if c=='hashtagcloud':
 		return get_hashtag_count_data()
-	elif c=='barchart':
+	elif c=='bar':
 		bar_result = get_barchart_data()
-		return (bar_result['bar_data'],bar_result['bar_categories'])
-	elif c =='timeseries':
+		bar_data = bar_result['bar_data']
+		bar_categories = bar_result['bar_categories']
+		concat_dict = {'bar_data':json.loads(bar_data), 'bar_categories':bar_categories }
+		concat_json = json.dumps(concat_dict)
+		return (concat_json)
+	elif c=='time':
 		timeseries_result = get_timeseries_data()
-		return timeseries_result['timeseries_data']
+		timeseries_data = timeseries_result['timeseries_data']
+		concat_dict = {'timeseries_data':json.loads(timeseries_data)}
+		concat_json = json.dumps(concat_dict)
+		return (concat_json)
 	else:
-		return ('error')
+		return ('error url route incorrect')
 
 
 # saving data into db
