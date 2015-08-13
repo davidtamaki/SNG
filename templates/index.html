@@ -17,6 +17,7 @@
 
     <script>
       var URL = 'http://localhost:5000/';
+      var filter = 'all';   
 
       /* refresh charts */
       function Get(yourUrl){
@@ -63,7 +64,12 @@
 
       /* filter tweets (by candidate) start */
       function filterTweet(candidate) {
-        var c = candidate.substr(0,candidate.indexOf(' '));
+        if (filter != 'all') {
+          var prevBtn = document.getElementById('button'+filter);
+          prevBtn.style.backgroundColor = "#fafafa";
+        }
+
+        var c = candidate.substr(candidate.indexOf(' ')+1);
         var posArray = $('#positiveItemData li');
         var posCount = $('#positiveItemData li').length;
         var neuArray = $('#neutralItemData li');
@@ -73,6 +79,10 @@
         filterLists(c,posArray,posCount);
         filterLists(c,neuArray,neuCount);
         filterLists(c,negArray,negCount);
+        filter = c;
+
+        var btn = document.getElementById('button'+c);
+        btn.style.backgroundColor = "#85C2A3";
       }
 
       function filterLists(c,array,max) {
@@ -87,6 +97,11 @@
       }
 
       function showAll() {
+        if (filter != 'all') {
+          var prevBtn = document.getElementById('button'+filter);
+          prevBtn.style.backgroundColor = "#fafafa";
+        }
+
         var posArray = $('#positiveItemData li');
         var posCount = $('#positiveItemData li').length;
         var neuArray = $('#neutralItemData li');
@@ -96,6 +111,7 @@
         showTweet(posArray,posCount);
         showTweet(neuArray,neuCount);
         showTweet(negArray,negCount);
+        filter = 'all'
       }
 
       function showTweet(array,max) {
@@ -216,6 +232,15 @@
           }
         }
         $(containerID).prepend(renderItem(data));
+
+        // hide element if filter is on
+        var c = data.contestant.substr(data.contestant.indexOf(' ')+1);
+        if (filter == 'all') {
+          // do nothing
+        } else if (filter != c) {
+          $(containerID + ' ' + listItemID).hide();
+        }
+
         renderTweetEmbed(data);
       }
       /* TWEET EMBED END */
@@ -271,22 +296,22 @@
       <div class="header">
 
         <div class="containerLinks" id="tags" style="text-align:justify;">
-          <div><a onclick="filterTweet('Jeb Bush')" class="btn btn-inline btn-small"><span>Bush</span></a></div>
-          <div><a onclick="filterTweet('Ben Carson')" class="btn btn-inline btn-small"><span>Carson</span></a></div>
-          <div><a onclick="filterTweet('Chris Christie')" class="btn btn-inline btn-small"><span>Christie</span></a></div>
-          <div><a onclick="filterTweet('Hillary Clinton')" class="btn btn-inline btn-small"><span>Clinton</span></a></div>
-          <div><a onclick="filterTweet('Ted Cruz')" class="btn btn-inline btn-small"><span>Cruz</span></a></div>
-          <div><a onclick="filterTweet('Lindsey Graham')" class="btn btn-inline btn-small"><span>Graham</span></a></div>
-          <div><a onclick="filterTweet('Bobby Jindal')" class="btn btn-inline btn-small"><span>Jindal</span></a></div>
-          <div><a onclick="filterTweet('Rand Paul')" class="btn btn-inline btn-small"><span>Paul</span></a></div>
-          <div><a onclick="filterTweet('Rick Perry')" class="btn btn-inline btn-small"><span>Perry</span></a></div>
-          <div><a onclick="filterTweet('Bernie Sanders')" class="btn btn-inline btn-small"><span>Sanders</span></a></div>
-          <div><a onclick="filterTweet('Donald Trump')" class="btn btn-inline btn-small"><span>Trump</span></a></div>
-          <div><a onclick="filterTweet('Scott Walker')" class="btn btn-inline btn-small"><span>Walker</span></a></div>
+          <div><a id="buttonBush" onclick="filterTweet('Jeb Bush')" class="btn btn-inline btn-small"><span>Bush</span></a></div>
+          <div><a id="buttonCarson" onclick="filterTweet('Ben Carson')" class="btn btn-inline btn-small"><span>Carson</span></a></div>
+          <div><a id="buttonChristie" onclick="filterTweet('Chris Christie')" class="btn btn-inline btn-small"><span>Christie</span></a></div>
+          <div><a id="buttonClinton" onclick="filterTweet('Hillary Clinton')" class="btn btn-inline btn-small"><span>Clinton</span></a></div>
+          <div><a id="buttonCruz" onclick="filterTweet('Ted Cruz')" class="btn btn-inline btn-small"><span>Cruz</span></a></div>
+          <div><a id="buttonGraham" onclick="filterTweet('Lindsey Graham')" class="btn btn-inline btn-small"><span>Graham</span></a></div>
+          <div><a id="buttonJindal" onclick="filterTweet('Bobby Jindal')" class="btn btn-inline btn-small"><span>Jindal</span></a></div>
+          <div><a id="buttonPaul" onclick="filterTweet('Rand Paul')" class="btn btn-inline btn-small"><span>Paul</span></a></div>
+          <div><a id="buttonPerry" onclick="filterTweet('Rick Perry')" class="btn btn-inline btn-small"><span>Perry</span></a></div>
+          <div><a id="buttonSanders" onclick="filterTweet('Bernie Sanders')" class="btn btn-inline btn-small"><span>Sanders</span></a></div>
+          <div><a id="buttonTrump" onclick="filterTweet('Donald Trump')" class="btn btn-inline btn-small"><span>Trump</span></a></div>
+          <div><a id="buttonWalker" onclick="filterTweet('Scott Walker')" class="btn btn-inline btn-small"><span>Walker</span></a></div>
         </div>
 
         <br></br>
-
+        <title>Social News Generator</title>
         <center>
           <span title="display all tweets">
             <h1 class= "title" onclick= "showAll()"> <strong>Social</strong> News Generator</h1>
@@ -335,7 +360,11 @@
       <div style="clear:both"></div>
     </div> <!-- end container -->
 
-
+    <footer>
+      <center>
+        <p>© 2015 <a href="mailto:davidszajngarten@gmail.com" target="_blank">David Szajngarten</a></p>
+      </center>
+    </footer>
 
     <!-- FOR EMBED-JS, CSS, & JQUERY, OEMBED  -->
     <script type=text/javascript src="{{url_for('static', filename='jquery.min.js') }}"></script>
