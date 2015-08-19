@@ -67,7 +67,7 @@ def analyse_tweet(tweetstring,expanded_url):
                 print ('Candidate Hashtag identified: ' + str(h))
                 return ({'sentiment':sentiment, 'team':team, 'hashtags':hashtags, 'shoutouts': shoutouts,
                     'urls':urls, 'contestant':contestant, 'tb_sentiment': tb_sentiment, 
-                    'tb_subjectivity': TB.sentiment.polarity, 'tb_polarity': TB.sentiment.polarity, 'tb_words': TB.words})
+                    'tb_subjectivity': TB.sentiment.subjectivity, 'tb_polarity': TB.sentiment.polarity, 'tb_words': TB.words})
     
     # tag contestant
     contestant = None

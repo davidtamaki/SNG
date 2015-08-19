@@ -17,14 +17,13 @@
 
     <script>
       var URL = 'http://localhost:5000/';
-      var filter = 'all';   
+      var filter = 'all';
+      var subscribe = true;
+      var tweetData = {{tweet_data|safe}}; 
 
       /* refresh charts */
       function Get(yourUrl){
-        var Httpreq = new XMLHttpRequest();
-        Httpreq.open("GET",yourUrl,false);
-        Httpreq.send(null);
-        return Httpreq.responseText;          
+        return $.ajax({type: "GET", url: yourUrl, async: false}).responseText;
       }
 
       function hideAllCharts() {
@@ -63,26 +62,11 @@
 
 
       /* filter tweets (by candidate) start */
-      function filterTweet(candidate) {
+      function returnBtnColor() {
         if (filter != 'all') {
           var prevBtn = document.getElementById('button'+filter);
-          prevBtn.style.backgroundColor = "#fafafa";
+          prevBtn.style.backgroundColor = "";
         }
-
-        var c = candidate.substr(candidate.indexOf(' ')+1);
-        var posArray = $('#positiveItemData li');
-        var posCount = $('#positiveItemData li').length;
-        var neuArray = $('#neutralItemData li');
-        var neuCount = $('#neutralItemData li').length;
-        var negArray = $('#negativeItemData li');
-        var negCount = $('#negativeItemData li').length;
-        filterLists(c,posArray,posCount);
-        filterLists(c,neuArray,neuCount);
-        filterLists(c,negArray,negCount);
-        filter = c;
-
-        var btn = document.getElementById('button'+c);
-        btn.style.backgroundColor = "#85C2A3";
       }
 
       function filterLists(c,array,max) {
@@ -96,12 +80,36 @@
         }
       }
 
-      function showAll() {
-        if (filter != 'all') {
-          var prevBtn = document.getElementById('button'+filter);
-          prevBtn.style.backgroundColor = "#fafafa";
-        }
+      function showTweet(array,max) {
+        for (i = 0; i < max; i++) {
+            $(array[i]).show();
+          }
+      }
 
+      function filterTweet(candidate) {
+        returnBtnColor()
+        var c = candidate.substr(candidate.indexOf(' ')+1);
+        if (c==filter) {
+          showAll();
+          return;
+        }
+        var posArray = $('#positiveItemData li');
+        var posCount = $('#positiveItemData li').length;
+        var neuArray = $('#neutralItemData li');
+        var neuCount = $('#neutralItemData li').length;
+        var negArray = $('#negativeItemData li');
+        var negCount = $('#negativeItemData li').length;
+        filterLists(c,posArray,posCount);
+        filterLists(c,neuArray,neuCount);
+        filterLists(c,negArray,negCount);
+        filter = c;
+
+        var btn = document.getElementById('button'+c);
+        btn.style.backgroundColor = "#CCCCCC";
+      }
+
+      function showAll() {
+        returnBtnColor()
         var posArray = $('#positiveItemData li');
         var posCount = $('#positiveItemData li').length;
         var neuArray = $('#neutralItemData li');
@@ -112,12 +120,6 @@
         showTweet(neuArray,neuCount);
         showTweet(negArray,negCount);
         filter = 'all'
-      }
-
-      function showTweet(array,max) {
-        for (i = 0; i < max; i++) {
-            $(array[i]).show();
-          }
       }
       /* filter tweets end */
 
@@ -149,7 +151,20 @@
               .attr("transform", function(d) {
                 return "translate(" + [d.x, d.y] + ")rotate(" + d.rotate + ")";
               })
-              .text(function(d) { return d.text; });
+              .text(function(d) { return d.text; })
+              // link to twitter hashtag search
+              .on('mouseover', function() {    
+                $(this).css('cursor','pointer');
+                $(this).css('text-decoration','underline');
+              })
+              .on('mouseleave', function() {
+                $(this).css('text-decoration','');
+              })
+              .on("click", function(d) {
+                var url = ('https://twitter.com/search?q=' + d.text);
+                console.log(url);
+                window.open(url);
+              });
         }
       }
       /* word cloud end */
@@ -194,7 +209,7 @@
       /* charts c3 end */
 
 
-      /* TWEET EMBED */
+      /* tweet embed start */
       function renderItem(data) {
         if (data.important == 't') {
           var itemString = ('<li id="twitter_li_' + data.item_id + 
@@ -243,7 +258,7 @@
 
         renderTweetEmbed(data);
       }
-      /* TWEET EMBED END */
+      /* tweet embed end */
 
       /* PubNub start */
       var channel = 'pubnub-sng';
@@ -257,12 +272,33 @@
           callback: renderAndPrepend
         });
       }
+
+      function stopStreamData() {
+        pubnub.unsubscribe({
+          channel: channel
+        });
+      }
+
+      function pauseStream() {
+        var btn = $('#pauseStream');
+        if (subscribe==true) {
+          stopStreamData();
+          subscribe=false;
+          btn.html("Resume");
+          btn.css("background-color", "#5bb75b");
+          console.log('stream paused')
+        } else {
+          getStreamData();
+          subscribe=true;
+          btn.html("Pause");
+          btn.css("background-color", "");
+          console.log('stream resumed')
+        }
+      }
       /* PubNub end */
 
 
       /* load top tweets saved in db then start pubnub */
-      var tweetData = {{tweet_data|safe}};
-
       function start() {
         for (i = tweetData.length-1; i >= 0; i--) {
           renderAndPrepend(tweetData[i])
@@ -273,17 +309,14 @@
         var timeseriesData = {{timeseries_data|safe}};
         var barData = {{bar_data|safe}};
         var barCat = {{bar_categories|safe}};
-
         initHashCloud(wordsData);
+
         // initTimeseries(timeseriesData);
         // initBarchart(barData,barCat);
         // setInterval(refreshHashtagCloud, 10000);
-
       }
 
       window.onload = start;
-
-
     </script>          
 
 
@@ -291,6 +324,9 @@
   </head>
   <body>
     <meta name="twitter:widgets:csp" content="on">
+
+    <!-- sticky button -->
+    <a id="pauseStream" onclick="pauseStream()" class="btn btn-inline btn-small btn-warning stickyButton">Pause</a>
 
     <div class="container"> <!-- container start -->
       <div class="header">
@@ -369,6 +405,7 @@
     <!-- FOR EMBED-JS, CSS, & JQUERY, OEMBED  -->
     <script type=text/javascript src="{{url_for('static', filename='jquery.min.js') }}"></script>
     <script type=text/javascript src="{{url_for('static', filename='jquery.jscroll.js') }}"></script>
+    <script type=text/javascript src="{{url_for('static', filename='jquery.sticky.js') }}"></script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/highlight.min.js"></script>
     <script src="http://platform.twitter.com/widgets.js"></script>

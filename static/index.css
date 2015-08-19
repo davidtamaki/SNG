@@ -123,4 +123,11 @@ div.borderOne {
 /*mouse hover over title (unfilter all)*/
 h1.title { cursor: pointer; }
 
+/*sticky button*/
+.stickyButton {
+    position : fixed;
+    right: 1%;
+    overflow : auto;
+    text-align: center;
+}
 

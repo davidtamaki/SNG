@@ -6,13 +6,13 @@ from textblob import TextBlob
 from textblob.sentiments import NaiveBayesAnalyzer
 from sngsql.database import Base, db_session, engine
 from sngsql.model import Hashtag, Item, User, Word, Url, Retweet_growth
-from nlp_textblob import *
 from sqlalchemy import and_
 from sqlalchemy.sql import exists, update
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 from pubnub import Pubnub
 from collections import deque
+from nlp_textblob import *
 from words import *
 from config import *
 from helper import *
