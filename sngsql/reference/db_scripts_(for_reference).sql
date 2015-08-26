@@ -1,3 +1,11 @@
+# count tweets with urls
+select distinct count(item.item_id) as tweet_with_url
+from item
+join "url" on item.item_id=url.item_id
+union all
+select distinct count(item_id) as tots
+from item
+
 # connect user and hashtag
 select screen_name,hashtag
 from user_hashtag
