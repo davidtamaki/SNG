@@ -160,12 +160,12 @@ class TweetStreamListener(StreamListener):
             pass
         
 
-        # queue storing previous 200 tweet texts for duplication check
-        if tweet in queue:
+        # queue storing previous 500 tweet texts for duplication check
+        if tweet[:20] in queue:
             print ('Tweet already processed, repeat found in queue, skip.' + '\n')
             return
-        queue.append(tweet)
-        if len(queue)>200:
+        queue.append(tweet[:20])
+        if len(queue)>500:
             queue.popleft()
 
 

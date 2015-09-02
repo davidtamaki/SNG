@@ -120,7 +120,7 @@ def get_hashtag_count_data():
 		JOIN item ON item_hashtag.item_id=item.id
 		JOIN hashtag ON item_hashtag.hashtag_id=hashtag.id
 		GROUP BY hashtag
-		HAVING count(hashtag) > 10
+		HAVING count(hashtag) > 5
 		ORDER BY tweet_count DESC
 		LIMIT 100''')
 	hashtag_data = array_to_dicts(db_session.execute(sql))
@@ -132,7 +132,7 @@ def get_hashtag_count_data():
 	smallest_relative_size = min(h_counts)/total
 	for row in hashtag_data:
 		relative_size = ((float(row['tweet_count'])/total))
-		size = min((relative_size/smallest_relative_size)*20,70)
+		size = min((relative_size/smallest_relative_size)*20,60)
 		h_data.append({"text": row['hashtag'], "size": round(size)})
 	hashtag_data = json.dumps(h_data)
 	print (hashtag_data)

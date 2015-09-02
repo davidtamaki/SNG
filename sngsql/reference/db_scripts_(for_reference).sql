@@ -200,7 +200,7 @@ ORDER BY share_count DESC
 
 
 # clean messages for human scoring (at least 1 hashtag)
-SELECT date, item_id, group_item_id, screen_name, regexp_replace(message, '\r|\n', ' ', 'g') as message_clean, favorite_count, share_count, contestant, sentiment, sentiment_textblob
+SELECT date, item_id, screen_name, regexp_replace(message, '\r|\n', ' ', 'g') as message_clean, favorite_count, share_count, contestant, sentiment, sentiment_textblob, sentiment_bayes, polarity, subjectivity
 FROM item JOIN "user" ON item.user_id = "user".id
 WHERE group_item_id = item_id
 AND group_item_id IN
@@ -210,7 +210,35 @@ AND group_item_id IN
 	GROUP BY group_item_id
 	HAVING COUNT(hashtag) > 0 )
 ORDER BY date DESC
-LIMIT 2000
+LIMIT 100
+
+# clean messages for human scoring, no neutral!!
+
+DISCARD TEMP;
+CREATE TEMPORARY TABLE pos AS
+SELECT date, item_id, screen_name, regexp_replace(message, '\r|\n', ' ', 'g') AS message_clean, favorite_count, share_count, contestant, sentiment_textblob, sentiment AS sentiment_lexicon, sentiment_bayes, polarity, subjectivity
+FROM item JOIN "user" ON item.user_id = "user".id
+WHERE group_item_id = item_id
+AND sentiment = 'positive'
+AND sentiment_textblob = 'positive'
+AND sentiment_bayes = 'positive'
+AND polarity >= .5
+ORDER BY date DESC
+LIMIT 100;
+CREATE TEMPORARY TABLE neg AS
+SELECT date, item_id, screen_name, regexp_replace(message, '\r|\n', ' ', 'g') AS message_clean, favorite_count, share_count, contestant, sentiment_textblob, sentiment AS sentiment_lexicon, sentiment_bayes, polarity, subjectivity
+FROM item JOIN "user" ON item.user_id = "user".id
+WHERE group_item_id = item_id
+AND sentiment = 'negative'
+AND sentiment_textblob = 'negative'
+AND sentiment_bayes = 'negative'
+AND polarity <= -.5
+ORDER BY date DESC
+LIMIT 100;
+SELECT * FROM pos
+UNION ALL
+SELECT * FROM neg;
+
 
 
 # update fav / share count
@@ -311,14 +339,10 @@ GROUP BY team
 
 
 SELECT hashtag, contestant,
-	ROUND(100*SUM(CASE WHEN sentiment_textblob ='negative' THEN 1 ELSE NULL END)/COUNT(share_count),2) AS pc_negative_tb,
-	ROUND(100*SUM(CASE WHEN sentiment_textblob ='neutral' THEN 1 ELSE NULL END)/COUNT(share_count),2) AS pc_neutral_tb,
-	ROUND(100*SUM(CASE WHEN sentiment_textblob ='positive' THEN 1 ELSE NULL END)/COUNT(share_count),2) AS pc_positive_tb,
-	ROUND(100*SUM(CASE WHEN sentiment ='negative' THEN 1 ELSE NULL END)/COUNT(share_count),2) AS pc_negative,
-	ROUND(100*SUM(CASE WHEN sentiment ='neutral' THEN 1 ELSE NULL END)/COUNT(share_count),2) AS pc_neutral,
-	ROUND(100*SUM(CASE WHEN sentiment ='positive' THEN 1 ELSE NULL END)/COUNT(share_count),2) AS pc_positive,
-	COUNT(share_count) AS tweet_count,
-	SUM(share_count) AS total_retweet_count
+	ROUND(100*SUM(CASE WHEN sentiment ='negative' THEN 1 ELSE NULL END)/COUNT(share_count)::numeric,2) AS pc_negative,
+	ROUND(100*SUM(CASE WHEN sentiment ='neutral' THEN 1 ELSE NULL END)/COUNT(share_count)::numeric,2) AS pc_neutral,
+	ROUND(100*SUM(CASE WHEN sentiment ='positive' THEN 1 ELSE NULL END)/COUNT(share_count)::numeric,2) AS pc_positive,
+	COUNT(share_count) AS tweet_count
 FROM item_hashtag
 JOIN item ON item_hashtag.item_id=item.id
 JOIN hashtag ON item_hashtag.hashtag_id=hashtag.id
