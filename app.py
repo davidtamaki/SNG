@@ -57,6 +57,7 @@ def get_timeseries_data():
 				AND date::TIMESTAMP + INTERVAL '1 hour' < CURRENT_TIMESTAMP
 				AND share_count = '0' THEN item_id ELSE NULL END),0) AS lastTenMin
 			FROM item
+			WHERE date > (CURRENT_TIMESTAMP - INTERVAL '24 hours')
 			GROUP BY contestant
 			HAVING sum(share_count)>1000
 			ORDER BY sum(share_count) DESC''')
